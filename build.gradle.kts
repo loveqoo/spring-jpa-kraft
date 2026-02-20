@@ -6,6 +6,8 @@ plugins {
 	alias(libs.plugins.spring.boot) apply false
 }
 
+description = "Opinionated Spring MVC & JPA abstractions in Kotlin"
+
 val springBootVersion: String = libs.versions.spring.boot.get()
 
 subprojects {
