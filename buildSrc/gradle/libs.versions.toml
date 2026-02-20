@@ -1,0 +1,9 @@
+[versions]
+kotlin = "2.2.21"
+springDependencyManagement = "1.1.7"
+ktlint = "14.0.1"
+
+[libraries]
+kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+spring-dependency-management = { module = "io.spring.gradle:dependency-management-plugin", version.ref = "springDependencyManagement" }
+ktlint-gradle = { module = "org.jlleitschuh.gradle:ktlint-gradle", version.ref = "ktlint" }
