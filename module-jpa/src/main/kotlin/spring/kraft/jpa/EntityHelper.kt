@@ -1,5 +1,6 @@
 package spring.kraft.jpa
 
+import spring.kraft.jpa.type.Identifiable
 import java.util.Objects
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.memberProperties

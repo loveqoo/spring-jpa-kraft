@@ -12,11 +12,15 @@ import org.springframework.data.annotation.CreatedDate
 import org.springframework.data.annotation.LastModifiedBy
 import org.springframework.data.annotation.LastModifiedDate
 import org.springframework.data.jpa.domain.support.AuditingEntityListener
+import spring.kraft.jpa.type.Identifiable
+import spring.kraft.jpa.type.Traceable
 import java.time.LocalDateTime
 
 @EntityListeners(AuditingEntityListener::class)
 @MappedSuperclass
-abstract class BaseEntity : Identifiable {
+abstract class BaseEntity :
+    Identifiable,
+    Traceable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     override var id: Long? = null
@@ -25,19 +29,19 @@ abstract class BaseEntity : Identifiable {
         get() = id == null
 
     @CreatedDate
-    @Column(name = Identifiable.CREATED_AT, updatable = false)
+    @Column(name = Traceable.Columns.CreatedAt.NAME, updatable = false)
     override var createdAt: LocalDateTime? = null
 
     @CreatedBy
-    @Column(name = Identifiable.CREATED_BY, updatable = false)
+    @Column(name = Traceable.Columns.CreatedBy.NAME, length = Traceable.Columns.CreatedBy.LENGTH, updatable = false)
     override var createdBy: String? = null
 
     @LastModifiedDate
-    @Column(name = Identifiable.UPDATED_AT)
+    @Column(name = Traceable.Columns.UpdatedAt.NAME)
     override var updatedAt: LocalDateTime? = null
 
     @LastModifiedBy
-    @Column(name = Identifiable.UPDATED_BY)
+    @Column(name = Traceable.Columns.UpdatedBy.NAME, length = Traceable.Columns.UpdatedBy.LENGTH)
     override var updatedBy: String? = null
 
     override fun equals(other: Any?): Boolean {
