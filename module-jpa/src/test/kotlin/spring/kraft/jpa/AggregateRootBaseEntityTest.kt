@@ -92,6 +92,15 @@ class AggregateRootBaseEntityTest(
     }
 
     @Test
+    fun `영속 vs 비영속 엔티티 equals는 false`() {
+        val transientEntity = TestAggregateRootEntity("test")
+        val persistedEntity = em.persistAndFlush(TestAggregateRootEntity("test"))
+
+        assertFalse(transientEntity.equals(persistedEntity))
+        assertFalse(persistedEntity.equals(transientEntity))
+    }
+
+    @Test
     fun `영속 엔티티 다른 id equals 불일치`() {
         val e1 = em.persistAndFlush(TestAggregateRootEntity("name-a"))
         val e2 = em.persistAndFlush(TestAggregateRootEntity("name-b"))

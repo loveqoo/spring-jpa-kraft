@@ -5,16 +5,16 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.support.Querydsl
-import spring.kraft.jpa.BaseEntity
+import spring.kraft.jpa.type.Identifiable
 
-interface DynamicSearchRepository<ID : Comparable<ID>, T : BaseEntity<ID>> {
+interface DynamicSearchRepository<ID : Comparable<ID>, T : Identifiable<ID>> {
     fun dynamicSearch(
         pageable: Pageable,
         customParam: Map<String, String>,
     ): Page<T>
 }
 
-fun <ID : Comparable<ID>, T : BaseEntity<ID>> JPQLQuery<T>.fetchPage(
+fun <ID : Comparable<ID>, T : Identifiable<ID>> JPQLQuery<T>.fetchPage(
     querydsl: Querydsl?,
     pageable: Pageable,
 ): Page<T> {

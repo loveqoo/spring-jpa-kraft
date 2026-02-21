@@ -64,7 +64,9 @@ abstract class AggregateRootBaseEntity<A : AggregateRootBaseEntity<A, ID>, ID : 
         if (other == null) return false
         if (Hibernate.getClass(this) != Hibernate.getClass(other)) return false
         other as AggregateRootBaseEntity<*, *>
-        return if (!isNew && !other.isNew) {
+        return if (isNew != other.isNew) {
+            false
+        } else if (!isNew) {
             id == other.id
         } else {
             EntityHelper.transientEquals(this, other)

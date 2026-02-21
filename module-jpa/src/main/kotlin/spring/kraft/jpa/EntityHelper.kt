@@ -28,7 +28,8 @@ object EntityHelper {
     ): Boolean {
         val thisGetters = extractGetter(o1).map { it.call(o1) == it.call(o2) }
         val otherGetters = otherGettersConfig.map { it.invoke(o1) == it.invoke(o2) }
-        return (thisGetters + otherGetters).reduce { acc, b -> acc && b }
+        val results = thisGetters + otherGetters
+        return results.isNotEmpty() && results.all { it }
     }
 
     fun <T : Any> transientHashCode(

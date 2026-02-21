@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Import
 import org.springframework.data.jpa.repository.JpaRepository
 import spring.kraft.jpa.config.TestJpaConfig
 import spring.kraft.jpa.fixture.TestBaseEntity
+import spring.kraft.jpa.type.unproxy
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -67,6 +68,27 @@ class BaseEntityTest(
         val e2 = em.persistAndFlush(TestBaseEntity("name-b"))
 
         assertNotEquals(e1, e2)
+    }
+
+    @Test
+    fun `영속 vs 비영속 엔티티 equals는 false`() {
+        val transientEntity = TestBaseEntity("test")
+        val persistedEntity = em.persistAndFlush(TestBaseEntity("test"))
+
+        assertFalse(transientEntity.equals(persistedEntity))
+        assertFalse(persistedEntity.equals(transientEntity))
+    }
+
+    @Test
+    fun `unproxy로 프록시에서 실제 타입 획득`() {
+        val entity = em.persistAndFlush(TestBaseEntity("test"))
+        em.clear()
+
+        val proxy = em.entityManager.getReference(TestBaseEntity::class.java, entity.id)
+        val unproxied = proxy.unproxy()
+
+        assertTrue(unproxied is TestBaseEntity)
+        assertEquals(entity.id, unproxied.id)
     }
 
     @Test

@@ -1,5 +1,6 @@
 package spring.kraft.jpa
 
+import spring.kraft.jpa.fixture.NoIdentityColumnEntity
 import spring.kraft.jpa.fixture.TestBaseEntity
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -69,6 +70,25 @@ class EntityHelperTest {
     fun `transientHashCode - 같은 비즈니스 키이면 같은 해시`() {
         val e1 = TestBaseEntity("same")
         val e2 = TestBaseEntity("same")
+
+        assertEquals(
+            EntityHelper.transientHashCode(e1),
+            EntityHelper.transientHashCode(e2),
+        )
+    }
+
+    @Test
+    fun `transientEquals - IdentityColumn 없으면 false`() {
+        val e1 = NoIdentityColumnEntity("same")
+        val e2 = NoIdentityColumnEntity("same")
+
+        assertFalse(EntityHelper.transientEquals(e1, e2))
+    }
+
+    @Test
+    fun `transientHashCode - IdentityColumn 없어도 예외 없이 동작`() {
+        val e1 = NoIdentityColumnEntity("test")
+        val e2 = NoIdentityColumnEntity("test")
 
         assertEquals(
             EntityHelper.transientHashCode(e1),
