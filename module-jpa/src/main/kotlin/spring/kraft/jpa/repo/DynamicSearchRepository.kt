@@ -15,12 +15,12 @@ interface DynamicSearchRepository<ID : Comparable<ID>, T : Identifiable<ID>> {
 }
 
 fun <ID : Comparable<ID>, T : Identifiable<ID>> JPQLQuery<T>.fetchPage(
-    querydsl: Querydsl?,
+    querydsl: Querydsl,
     pageable: Pageable,
 ): Page<T> {
     val total = this.fetchCount()
     val list =
-        checkNotNull(querydsl) { "Querydsl must not be null" }
+        querydsl
             .applyPagination(pageable, this)
             .fetch()
     return PageImpl<T>(list, pageable, total)
