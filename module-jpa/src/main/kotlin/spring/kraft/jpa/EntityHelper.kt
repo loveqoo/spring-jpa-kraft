@@ -12,9 +12,9 @@ object EntityHelper {
             .filter { it.getter.findAnnotation<IdentityColumn>() != null }
             .map { it.getter }
 
-    fun compareTo(
-        e1: Identifiable,
-        e2: Identifiable,
+    fun <ID : Comparable<ID>> compareTo(
+        e1: Identifiable<ID>,
+        e2: Identifiable<ID>,
     ): Result<Int> =
         runCatching {
             check(!e1.isNew && !e2.isNew) { "Fail: Compare entities" }

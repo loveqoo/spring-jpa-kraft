@@ -2,6 +2,7 @@
 kotlin = "2.2.21"
 spring-boot = "4.0.3"
 spring-dependency-management = "1.1.7"
+querydsl = "5.1.0"
 
 [libraries]
 spring-boot-h2console = { module = "org.springframework.boot:spring-boot-h2console" }
@@ -14,8 +15,11 @@ spring-boot-starter-data-jpa-test = { module = "org.springframework.boot:spring-
 spring-boot-starter-webmvc-test = { module = "org.springframework.boot:spring-boot-starter-webmvc-test" }
 kotlin-test-junit5 = { module = "org.jetbrains.kotlin:kotlin-test-junit5" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+querydsl-jpa = { module = "com.querydsl:querydsl-jpa", version.ref = "querydsl" }
+querydsl-apt = { module = "com.querydsl:querydsl-apt", version.ref = "querydsl" }
 
 [plugins]
+kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
 kotlin-jpa = { id = "org.jetbrains.kotlin.plugin.jpa", version.ref = "kotlin" }

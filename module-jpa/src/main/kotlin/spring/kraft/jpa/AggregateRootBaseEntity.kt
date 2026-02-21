@@ -3,21 +3,28 @@ package spring.kraft.jpa
 import jakarta.persistence.Column
 import jakarta.persistence.EntityListeners
 import jakarta.persistence.MappedSuperclass
+import jakarta.persistence.Version
 import org.hibernate.Hibernate
 import org.springframework.data.annotation.CreatedBy
 import org.springframework.data.annotation.CreatedDate
 import org.springframework.data.annotation.LastModifiedBy
 import org.springframework.data.annotation.LastModifiedDate
+import org.springframework.data.domain.AbstractAggregateRoot
 import org.springframework.data.jpa.domain.support.AuditingEntityListener
 import spring.kraft.jpa.type.Identifiable
+import spring.kraft.jpa.type.OptimisticLockSupport
+import spring.kraft.jpa.type.SoftDeletable
 import spring.kraft.jpa.type.Traceable
 import java.time.LocalDateTime
 
 @EntityListeners(AuditingEntityListener::class)
 @MappedSuperclass
-abstract class BaseEntity<ID : Comparable<ID>> :
+abstract class AggregateRootBaseEntity<A : AggregateRootBaseEntity<A, ID>, ID : Comparable<ID>> :
+    AbstractAggregateRoot<A>(),
     Identifiable<ID>,
-    Traceable {
+    Traceable,
+    OptimisticLockSupport,
+    SoftDeletable {
     override val isNew: Boolean
         get() = id == null
 
@@ -37,11 +44,26 @@ abstract class BaseEntity<ID : Comparable<ID>> :
     @Column(name = Traceable.Columns.UpdatedBy.NAME, length = Traceable.Columns.UpdatedBy.LENGTH)
     override var updatedBy: String? = null
 
+    @Version
+    @Column(name = OptimisticLockSupport.Columns.VersionNumber.NAME)
+    override var versionNumber: Long = 0
+
+    @Column(name = SoftDeletable.Columns.Deleted.NAME)
+    override var deleted: Boolean = false
+
+    override fun versionUp() {
+        updatedAt = LocalDateTime.now()
+    }
+
+    override fun delete() {
+        deleted = true
+    }
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other == null) return false
         if (Hibernate.getClass(this) != Hibernate.getClass(other)) return false
-        other as BaseEntity<*>
+        other as AggregateRootBaseEntity<*, *>
         return if (!isNew && !other.isNew) {
             id == other.id
         } else {

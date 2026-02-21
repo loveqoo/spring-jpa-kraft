@@ -1,7 +1,13 @@
 package spring.kraft.jpa.type
 
 interface OptimisticLockSupport {
-    var versionNumber: Int
+    val versionNumber: Long
 
-    fun versionUp(): Unit
+    fun versionUp()
+
+    object Columns {
+        object VersionNumber {
+            const val NAME = "version"
+        }
+    }
 }
