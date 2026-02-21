@@ -1,4 +1,5 @@
 plugins {
+    `java-library`
     alias(libs.plugins.kotlin.spring)
     alias(libs.plugins.kotlin.jpa)
     kotlin("kapt")
@@ -6,7 +7,7 @@ plugins {
 
 dependencies {
     implementation(project(":module-core"))
-    implementation(libs.spring.boot.starter.data.jpa)
+    api(libs.spring.boot.starter.data.jpa)
     implementation(variantOf(libs.querydsl.jpa) { classifier("jakarta") })
     kapt(variantOf(libs.querydsl.apt) { classifier("jakarta") })
     runtimeOnly(libs.h2)
