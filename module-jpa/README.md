@@ -29,6 +29,7 @@ SoftDeletable ─────────┘
 | `SoftDeletable` | Soft delete | `deleted: Boolean`, `delete()` |
 | `Checkable` | Custom validation | `check()` |
 | `ParentIdAware<ID>` | Parent reference | `parentId(): ID` |
+| `AggregateRootAware<ID, E>` | Aggregate root reference | `aggregateRoot(): E` |
 
 Each interface provides column name constants (`Columns`) to enforce consistent schema naming.
 
@@ -86,8 +87,8 @@ Repositories are provided to match entity type interfaces.
 ### QueryDSL Helper
 
 ```kotlin
-fun <ID, T : BaseEntity<ID>> JPQLQuery<T>.fetchPage(
-    querydsl: Querydsl?,
+fun <ID : Comparable<ID>, T : Identifiable<ID>> JPQLQuery<T>.fetchPage(
+    querydsl: Querydsl,
     pageable: Pageable,
 ): Page<T>
 ```

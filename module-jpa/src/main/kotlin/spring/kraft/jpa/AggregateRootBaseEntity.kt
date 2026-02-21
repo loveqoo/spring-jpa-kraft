@@ -19,7 +19,7 @@ import java.time.LocalDateTime
 
 @EntityListeners(AuditingEntityListener::class)
 @MappedSuperclass
-abstract class AggregateRootBaseEntity<A : AggregateRootBaseEntity<A, ID>, ID : Comparable<ID>> :
+abstract class AggregateRootBaseEntity<ID : Comparable<ID>, A : AggregateRootBaseEntity<ID, A>> :
     AbstractAggregateRoot<A>(),
     Identifiable<ID>,
     Traceable,

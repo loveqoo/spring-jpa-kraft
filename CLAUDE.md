@@ -8,7 +8,7 @@
 
 - `module-core`: 공통 모듈 (`Result<T>` 확장 함수 — `flatMap`, `zip`)
 - `module-jpa`: JPA 관련 기반 코드 (Entity, Repository, EntityHelper 등)
-- `module-mvc`: Spring MVC 모듈 (FormResolver 계층, UpdateForm)
+- `module-mvc`: Spring MVC 모듈 (FormResolver 계층, UpdateForm, Service 계층)
 - `buildSrc`: Gradle 빌드 설정
 
 ## 빌드
@@ -39,6 +39,7 @@
 - `OptimisticLockSupport`: 낙관적 락 (`versionNumber: Long`, `versionUp()`) + 컬럼명 상수
 - `SoftDeletable`: soft delete (`deleted: Boolean`, `delete()`) + 컬럼명 상수
 - `ParentIdAware<ID>`: 부모 엔티티 ID 참조 (`parentId()`)
+- `AggregateRootAware<ID, E>`: 하위 엔티티가 자신의 Aggregate Root를 참조 (`aggregateRoot(): E`)
 - 향후 추가 예정: 엔티티 복사, 특정 필드 기반 Ordering 등
 
 **Repository:**
@@ -86,11 +87,31 @@
   - `updateProperty()`: 단순 값 비교 후 변경
   - `updateProperty(raw, supplier, setter)`: 변환 후 비교
 
+**Service 계층** (`spring.kraft.service`):
+- 모든 서비스가 interface default method로 구현 — 구현 클래스에서 `repo`, `formResolver` 등만 제공하면 됨
+- `ReadOnlyService<ID, E>`: 읽기 전용 CRUD + transformer 오버로드
+  - `findById`: nullable 반환 (`E?`, `T?`) — 존재하지 않으면 `null`
+  - `getOne`: non-null 반환 (`E`, `T`) — `getReferenceById` 위임, 존재하지 않으면 예외
+- `BaseEntityService<ID, E, CF, UF>`: `ReadOnlyService` 확장. FormResolver 기반 `create`/`update`/`delete`
+  - `create`/`update` 시 `formResolver.run { request.toEntity() }` → `repo.save()` → `Checkable`이면 `check()` 호출
+  - Result 파이프라인 결과를 `getOrThrow()`로 언래핑 — 실패 시 예외 전파
+- `SearchableEntityService<ID, E, R, CF, UF>`: `BaseEntityService` 확장. `R`이 `QuerydslPredicateExecutor` + `DynamicSearchRepository` 구현 필요
+  - `search(predicate, pageable)`: QueryDSL Predicate 기반 검색
+  - `searchCustom(params, pageable)`: `Map<String, String>` 기반 동적 검색
+- `RevisionEntityService<ID, E, R, CF, UF>`: `BaseEntityService` 확장. `R`이 `RevisionRepository` 구현 필요
+  - `findRevisions(id)`: Envers 리비전 목록 조회
+  - `findRevisionPages(id, pageable)`: 페이징된 리비전 조회
+- `SearchableRevisionEntityService<ID, E, R, CF, UF>`: `SearchableEntityService` + `RevisionEntityService` 결합
+- `AggregateRootAwareService<ID, E, RE>`: Aggregate Root 이벤트 발행
+  - `entityType: Class<E>` 필수 — 런타임 타입 검사로 다른 aggregate 계층의 엔티티를 안전하게 무시
+  - `publishEvent(entity)`: `entityType.isInstance(entity)`로 정확한 타입 검사 후 `aggregateRoot()` → `save`로 도메인 이벤트 발행
+
 ### 코딩 스타일 결정
 
 - **의존성 주입 시 상위 타입 사용**: 특별한 이유가 없는 한 구체 타입이 아닌 상위 클래스(인터페이스/추상클래스) 타입으로 주입. 예) `TestBaseEntityRepository` 대신 `JpaRepository<TestBaseEntity, Long>`
 - **생성자 주입 우선**: 필드 주입(`@Autowired lateinit var`) 대신 생성자 주입(`val`)을 기본으로 사용. 불변성 보장 + null 안전성 확보
 - audit 필드에 `protected set` 사용하지 않음 — `Traceable` 인터페이스에서 `val`로 선언하여 외부 setter가 이미 노출되지 않으므로 불필요
+- **type erasure 대응**: 제네릭 인터페이스에서 런타임 타입 검사가 필요한 경우 `Class<T>` 프로퍼티를 인터페이스에 선언하여 `isInstance()` 검사 사용. `is T`나 `as? T`는 erasure로 상위 바운드까지만 검사되므로 신뢰 불가 (예: `AggregateRootAwareService.entityType`)
 - `Result<T>` 사용 기준:
   - **일반 원칙**: 실패가 비즈니스 흐름의 일부인 경우만 사용 (예: `EntityHelper.compareTo()`). 인프라 레벨 예외(DB 오류, 설정 오류 등)는 그대로 throw — Spring `@ExceptionHandler`로 처리
   - **Result 파이프라인 내부** (예: `FormResolver`): `runCatching`/`flatMap`/`zip`으로 구성된 파이프라인 안에서는 인프라 예외도 `Result.failure`로 통합됨. 인프라 예외 전파 책임은 파이프라인 밖(Service/Controller)에서 `getOrThrow()` 등으로 처리

@@ -5,7 +5,7 @@ import spring.kraft.core.flatMap
 import spring.kraft.jpa.type.Identifiable
 import spring.kraft.jpa.type.unproxy
 
-abstract class FormResolver1<ID, E, CF, UF, P1_ID, P1> :
+abstract class FormResolver1<ID, E, in CF, in UF, P1_ID, P1> :
     FormResolver<ID, E, CF, UF>()
     where ID : Comparable<ID>,
           E : Identifiable<ID>,

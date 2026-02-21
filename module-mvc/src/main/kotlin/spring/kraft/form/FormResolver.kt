@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 import spring.kraft.core.flatMap
 import spring.kraft.jpa.type.Identifiable
 
-abstract class FormResolver<ID, E, CF, UF>
+abstract class FormResolver<ID, E, in CF, in UF>
     where ID : Comparable<ID>,
           E : Identifiable<ID>,
           CF : Any,

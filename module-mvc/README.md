@@ -137,10 +137,99 @@ These prevent unnecessary dirty detection by only calling setters when values ac
 - **Hibernate proxy safety** -- `getReferenceById()` results are passed through `unproxy()` before use.
 - **transform() hook** -- override `transform(entity)` to apply cross-cutting logic (e.g., permission checks) after entity loading.
 
+## Service Layer
+
+Services are defined as **interfaces with default methods**. Implementors only need to provide the required dependencies (`repo`, `formResolver`, etc.).
+
+### Hierarchy
+
+```
+ReadOnlyService<ID, E>                          (findById, getOne, findAll, ...)
+└── BaseEntityService<ID, E, CF, UF>            (create, update, delete via FormResolver)
+    ├── SearchableEntityService<..., R>          (QueryDSL + DynamicSearch)
+    ├── RevisionEntityService<..., R>            (Envers revision history)
+    └── SearchableRevisionEntityService<..., R>  (Searchable + Revision combined)
+
+AggregateRootAwareService<ID, E, RE>            (domain event publishing)
+```
+
+### ReadOnlyService
+
+| Method | Description |
+|---|---|
+| `findById(id)` | Returns entity or `null` |
+| `findById(id, transformer)` | Returns transformed result or `null` |
+| `getOne(id)` | Returns entity reference (throws if not found) |
+| `getOne(id, transformer)` | Returns transformed reference |
+| `getByIdIn(ids)` | Returns all entities matching the IDs |
+| `findAll(pageable)` | Returns paged results |
+| `findAll(pageable, transformer)` | Returns paged transformed results |
+
+### BaseEntityService
+
+Extends `ReadOnlyService`. Uses `FormResolver` to create/update entities.
+
+| Method | Description |
+|---|---|
+| `create(request)` | Resolves form → saves entity → calls `check()` if `Checkable` |
+| `update(request)` | Resolves form → saves entity → calls `check()` if `Checkable` |
+| `delete(id)` | Delegates to `repo.deleteById()` |
+
+Result pipeline failures are unwrapped via `getOrThrow()`, propagating exceptions to the caller.
+
+### SearchableEntityService
+
+Requires `repo` to implement `QuerydslPredicateExecutor` and `DynamicSearchRepository`.
+
+| Method | Description |
+|---|---|
+| `search(predicate, pageable)` | QueryDSL predicate-based search |
+| `searchCustom(params, pageable)` | Dynamic search via `Map<String, String>` |
+
+### RevisionEntityService
+
+Requires `repo` to implement `RevisionRepository<E, ID, Int>`.
+
+| Method | Description |
+|---|---|
+| `findRevisions(id)` | Returns all revisions for an entity |
+| `findRevisionPages(id, pageable)` | Returns paged revisions |
+
+Both methods have transformer overloads for DTO projection.
+
+### AggregateRootAwareService
+
+Standalone interface for publishing domain events through aggregate roots.
+
+Implementors must provide:
+
+| Property | Purpose |
+|---|---|
+| `aggregateRootRepo` | JPA repository for the aggregate root entity |
+| `entityType` | `Class<E>` for runtime type checking (e.g., `MyEntity::class.java`) |
+
+```kotlin
+fun publishEvent(entity: Any)
+```
+
+Uses `entityType.isInstance(entity)` for exact runtime type checking, so only entities of the expected type trigger event publishing. Non-matching types -- including `AggregateRootAware` entities from different aggregate hierarchies -- are silently ignored.
+
+### Usage Example
+
+```kotlin
+@Service
+class ArticleService(
+    override val repo: ArticleRepository,
+    override val formResolver: ArticleFormResolver,
+) : BaseEntityService<Long, Article, ArticleCreateForm, ArticleUpdateForm> {
+    override val tableName = "article"
+}
+```
+
 ## Status
 
-- **Implemented**: `FormResolver0`~`4`, `UpdateForm`
-- **Planned**: Service layer, Controller integration, error response mapping
+- **Implemented**: `FormResolver0`~`4`, `UpdateForm`, Service layer (`ReadOnlyService`, `BaseEntityService`, `SearchableEntityService`, `RevisionEntityService`, `SearchableRevisionEntityService`, `AggregateRootAwareService`)
+- **Planned**: Controller integration, error response mapping
 
 ## Build
 

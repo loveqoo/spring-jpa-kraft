@@ -13,7 +13,7 @@ import spring.kraft.jpa.IdentityColumn
 class TestAggregateRootEntity(
     @get:IdentityColumn
     val name: String,
-) : AggregateRootBaseEntity<TestAggregateRootEntity, Long>() {
+) : AggregateRootBaseEntity<Long, TestAggregateRootEntity>() {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     override var id: Long? = null

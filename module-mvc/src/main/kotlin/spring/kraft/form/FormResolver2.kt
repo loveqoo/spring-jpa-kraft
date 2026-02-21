@@ -6,7 +6,7 @@ import spring.kraft.core.zipLazy
 import spring.kraft.jpa.type.Identifiable
 import spring.kraft.jpa.type.unproxy
 
-abstract class FormResolver2<ID, E, CF, UF, P1_ID, P1, P2_ID, P2> :
+abstract class FormResolver2<ID, E, in CF, in UF, P1_ID, P1, P2_ID, P2> :
     FormResolver<ID, E, CF, UF>()
     where ID : Comparable<ID>,
           E : Identifiable<ID>,

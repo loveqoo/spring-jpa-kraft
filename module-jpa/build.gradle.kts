@@ -8,7 +8,8 @@ plugins {
 dependencies {
     implementation(project(":module-core"))
     api(libs.spring.boot.starter.data.jpa)
-    implementation(variantOf(libs.querydsl.jpa) { classifier("jakarta") })
+    api(libs.spring.data.envers)
+    api(variantOf(libs.querydsl.jpa) { classifier("jakarta") })
     kapt(variantOf(libs.querydsl.apt) { classifier("jakarta") })
     runtimeOnly(libs.h2)
     testImplementation(libs.spring.boot.starter.data.jpa.test)
