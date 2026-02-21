@@ -13,6 +13,10 @@ dependencies {
     testImplementation(libs.spring.boot.starter.data.jpa.test)
 }
 
+tasks.matching { it.name == "kaptTestKotlin" || it.name == "kaptGenerateStubsTestKotlin" }.configureEach {
+    enabled = false
+}
+
 allOpen {
     annotation("jakarta.persistence.Entity")
     annotation("jakarta.persistence.MappedSuperclass")
