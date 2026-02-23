@@ -292,12 +292,28 @@ ReadOnlyDelegator<ID, E, S, D>                           (list, getOne with mapp
 | Interface | Methods |
 |---|---|
 | `ReadOnlyMapper<ID, E, D>` | `toReadDto(entity): D` |
-| `BaseEntityMapper<ID, E, D>` | `toCreateDto(entity): String`, `toUpdateDto(entity): String`, `toDeleteDto(id): String` |
+| `BaseEntityMapper<ID, E, D>` | `toCreateDto(entity): MutationResponse`, `toUpdateDto(entity): MutationResponse`, `toDeleteDto(id): MutationResponse` |
 | `RevisionEntityMapper<ID, E, D>` | `toRevisionDto(entity): D` |
+
+### MutationResponse
+
+All write operations (`createOne`, `updateOne`, `delete`) return a `MutationResponse` — a structured DTO replacing raw JSON strings:
+
+```kotlin
+data class MutationResponse(
+    val action: String,  // "create", "update", or "delete"
+    val id: String,
+    val name: String,
+) : Serializable
+```
+
+Factory methods: `MutationResponse.create(id, name)`, `.update(id, name)`, `.delete(id, name)`.
+
+The delegator's default `toCreateDto`/`toUpdateDto`/`toDeleteDto` implementations use these factories with `entity.id` and `entityName`. Controllers can override the mapper methods to customize the response.
 
 ### Action Interfaces
 
-Each controller level has a corresponding Action interface that defines the public contract:
+Each controller level has a corresponding **Action** interface — the required HTTP endpoint spec that every controller must implement:
 
 | Action | Methods |
 |---|---|
@@ -306,7 +322,26 @@ Each controller level has a corresponding Action interface that defines the publ
 | `SearchableEntityAction` | `search(pageable, predicate?)`, `search(pageable, customParams)` |
 | `RevisionEntityAction` | `revisions(id)`, `revisionPages(id, pageable)` |
 
-Each Action also has an `*ActionExtend` variant with `<T : Any> transformer` overloads. These are implemented by the delegator but not directly exposed by the controller.
+### ActionExtend Interfaces
+
+Each Action has a corresponding **ActionExtend** interface with `<T : Any> transformer` overloads. These define reusable extended capabilities that the **delegator** provides:
+
+| ActionExtend | Methods |
+|---|---|
+| `ReadOnlyActionExtend` | `<T> list(pageable, transformer)`, `<T> getOne(id, transformer)` |
+| `BaseEntityActionExtend` | `toCreateDto(entity, entityName): MutationResponse`, `toUpdateDto(entity, entityName): MutationResponse`, `toDeleteDto(id, entityName): MutationResponse` |
+| `SearchableEntityActionExtend` | `<T> search(predicate, pageable, transformer)`, `<T> searchCustom(params, pageable, transformer)` |
+| `RevisionEntityActionExtend` | `<T> revisions(id, transformer)`, `<T> revisionPages(id, pageable, transformer)` |
+
+**Design intent**: Controllers don't need to know about ActionExtend — they only implement Action. But when a controller needs extended functionality (e.g., a custom transformer for a specific endpoint), it can access it through the `delegator` without implementing the logic itself. Since the delegator implements ActionExtend once, multiple controllers of similar types reuse the same extended logic instead of each duplicating it.
+
+```kotlin
+// Controller only implements Action (required spec)
+@GetMapping("/summary")
+fun summary(pageable: Pageable): Page<SummaryDto> =
+    delegator.list(pageable) { entity -> SummaryDto.from(entity) }
+    //       ↑ ActionExtend method — implemented once in Delegator, reused across controllers
+```
 
 ### Key Design Decisions
 

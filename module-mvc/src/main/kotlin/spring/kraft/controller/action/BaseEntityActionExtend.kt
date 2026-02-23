@@ -1,5 +1,6 @@
 package spring.kraft.controller.action
 
+import spring.kraft.controller.dto.MutationResponse
 import spring.kraft.jpa.BaseEntity
 
 interface BaseEntityActionExtend<ID, E> : ReadOnlyActionExtend<ID, E>
@@ -7,15 +8,15 @@ interface BaseEntityActionExtend<ID, E> : ReadOnlyActionExtend<ID, E>
     fun toCreateDto(
         entity: E,
         entityName: String,
-    ): String
+    ): MutationResponse
 
     fun toUpdateDto(
         entity: E,
         entityName: String,
-    ): String
+    ): MutationResponse
 
     fun toDeleteDto(
         id: ID,
         entityName: String,
-    ): String
+    ): MutationResponse
 }

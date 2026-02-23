@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable
 import org.springframework.validation.Errors
 import spring.kraft.controller.action.BaseEntityAction
 import spring.kraft.controller.delegator.BaseEntityDelegator
+import spring.kraft.controller.dto.MutationResponse
 import spring.kraft.controller.mapper.BaseEntityMapper
 import spring.kraft.form.UpdateForm
 import spring.kraft.jpa.BaseEntity
@@ -31,18 +32,18 @@ abstract class BaseEntityController<ID, E, S, D, CF, UF> :
     override fun createOne(
         request: CF,
         errors: Errors,
-    ): String = delegator.createOne(request, errors)
+    ): MutationResponse = delegator.createOne(request, errors)
 
     override fun updateOne(
         request: UF,
         errors: Errors,
-    ): String = delegator.updateOne(request, errors)
+    ): MutationResponse = delegator.updateOne(request, errors)
 
-    override fun delete(id: ID): String = delegator.delete(id)
+    override fun delete(id: ID): MutationResponse = delegator.delete(id)
 
-    override fun toCreateDto(entity: E): String = delegator.toCreateDto(entity, tableName)
+    override fun toCreateDto(entity: E): MutationResponse = delegator.toCreateDto(entity, tableName)
 
-    override fun toUpdateDto(entity: E): String = delegator.toUpdateDto(entity, tableName)
+    override fun toUpdateDto(entity: E): MutationResponse = delegator.toUpdateDto(entity, tableName)
 
-    override fun toDeleteDto(id: ID): String = delegator.toDeleteDto(id, tableName)
+    override fun toDeleteDto(id: ID): MutationResponse = delegator.toDeleteDto(id, tableName)
 }

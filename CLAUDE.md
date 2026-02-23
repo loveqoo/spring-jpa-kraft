@@ -127,13 +127,18 @@
     - `FormValidationException` → 400 (FieldError/ObjectError 분기, details 포함)
     - `ConstraintViolationException` → 400 (Bean Validation 위반, propertyPath/message 매핑)
     - `EntityNotFoundException` → 404
+- **DTO** (`spring.kraft.controller.dto`):
+  - `MutationResponse`: CUD 작업의 공통 응답 DTO (`action`, `id`, `name`). `Serializable` 구현. `Companion`에 `create`/`update`/`delete` 팩토리 메서드 제공
 - **Mapper** 인터페이스: Controller가 직접 구현
   - `ReadOnlyMapper<ID, E, D>`: `toReadDto(entity): D`
-  - `BaseEntityMapper<ID, E, D>`: `toCreateDto(entity): String`, `toUpdateDto(entity): String`, `toDeleteDto(id): String`
+  - `BaseEntityMapper<ID, E, D>`: `toCreateDto(entity): MutationResponse`, `toUpdateDto(entity): MutationResponse`, `toDeleteDto(id): MutationResponse`
   - `RevisionEntityMapper<ID, E, D>`: `toRevisionDto(entity): D`
-- **Action** 인터페이스: Controller가 외부에 노출하는 메서드 계약
-  - `ReadOnlyAction`/`BaseEntityAction`/`SearchableEntityAction`/`RevisionEntityAction`/`SearchableRevisionEntityAction`: 기본 Action
-  - `*ActionExtend`: `<T : Any> transformer` 오버로드 — delegator가 구현, controller에서 직접 노출 안 함
+- **Action** 인터페이스: Controller가 반드시 구현해야 하는 HTTP 엔드포인트 스펙
+  - `ReadOnlyAction`/`BaseEntityAction`/`SearchableEntityAction`/`RevisionEntityAction`/`SearchableRevisionEntityAction`
+- **ActionExtend** 인터페이스: Delegator가 제공하는 공통 확장 기능의 계약
+  - `*ActionExtend`: `<T : Any> transformer` 오버로드 — Delegator에 한 번 구현되어 여러 Controller에서 재사용
+  - Controller는 ActionExtend를 몰라도 되지만, 필요하면 `delegator`를 통해 확장 기능에 접근 가능
+  - 비슷한 타입의 Controller가 각각 공통 확장 로직을 중복 구현하는 것을 방지
 - **설계 의도**: Controller는 `abstract class`로 상속하여 `service`, `tableName`, mapper 메서드만 구현하면 CRUD 엔드포인트 자동 완성. `delegator`는 `by lazy`로 지연 초기화
 
 ### 코딩 스타일 결정

@@ -2,7 +2,6 @@ package spring.kraft.controller.delegator
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
@@ -11,6 +10,7 @@ import org.mockito.kotlin.whenever
 import org.springframework.validation.Errors
 import org.springframework.validation.FieldError
 import spring.kraft.controller.delegator.fixture.TestBaseEntityMapper
+import spring.kraft.controller.dto.MutationResponse
 import spring.kraft.controller.exception.FormValidationException
 import spring.kraft.service.BaseEntityService
 import spring.kraft.service.fixture.ServiceCreateForm
@@ -27,13 +27,14 @@ class BaseEntityDelegatorTest {
         val form = ServiceCreateForm(name = "new")
         val errors: Errors = mock()
         val entity = TestServiceEntity(id = 1L, name = "new")
+        val response = MutationResponse.create(1L, "test")
         whenever(errors.hasErrors()).thenReturn(false)
         whenever(mockService.create(form)).thenReturn(entity)
-        whenever(mockMapper.toCreateDto(entity)).thenReturn("""{"id": 1}""")
+        whenever(mockMapper.toCreateDto(entity)).thenReturn(response)
 
         val result = delegator.createOne(form, errors)
 
-        assertEquals("""{"id": 1}""", result)
+        assertEquals(response, result)
         verify(mockService).create(form)
     }
 
@@ -60,13 +61,14 @@ class BaseEntityDelegatorTest {
         val form = ServiceUpdateForm(id = 1L, name = "updated")
         val errors: Errors = mock()
         val entity = TestServiceEntity(id = 1L, name = "updated")
+        val response = MutationResponse.update(1L, "test")
         whenever(errors.hasErrors()).thenReturn(false)
         whenever(mockService.update(form)).thenReturn(entity)
-        whenever(mockMapper.toUpdateDto(entity)).thenReturn("""{"id": 1}""")
+        whenever(mockMapper.toUpdateDto(entity)).thenReturn(response)
 
         val result = delegator.updateOne(form, errors)
 
-        assertEquals("""{"id": 1}""", result)
+        assertEquals(response, result)
         verify(mockService).update(form)
     }
 
@@ -90,42 +92,43 @@ class BaseEntityDelegatorTest {
 
     @Test
     fun `delete - service delete 후 mapper toDeleteDto 반환`() {
-        whenever(mockMapper.toDeleteDto(1L)).thenReturn("""{"id": 1}""")
+        val response = MutationResponse.delete(1L, "test")
+        whenever(mockMapper.toDeleteDto(1L)).thenReturn(response)
 
         val result = delegator.delete(1L)
 
-        assertEquals("""{"id": 1}""", result)
+        assertEquals(response, result)
         verify(mockService).delete(1L)
     }
 
     @Test
-    fun `toCreateDto - JSON 문자열 생성`() {
+    fun `toCreateDto - MutationResponse 생성`() {
         val entity = TestServiceEntity(id = 1L, name = "test")
 
         val result = delegator.toCreateDto(entity, "TestEntity")
 
-        assertTrue(result.contains(""""action": "create""""))
-        assertTrue(result.contains(""""id": "1""""))
-        assertTrue(result.contains(""""name": "TestEntity""""))
+        assertEquals("create", result.action)
+        assertEquals("1", result.id)
+        assertEquals("TestEntity", result.name)
     }
 
     @Test
-    fun `toUpdateDto - JSON 문자열 생성`() {
+    fun `toUpdateDto - MutationResponse 생성`() {
         val entity = TestServiceEntity(id = 1L, name = "test")
 
         val result = delegator.toUpdateDto(entity, "TestEntity")
 
-        assertTrue(result.contains(""""action": "update""""))
-        assertTrue(result.contains(""""id": "1""""))
-        assertTrue(result.contains(""""name": "TestEntity""""))
+        assertEquals("update", result.action)
+        assertEquals("1", result.id)
+        assertEquals("TestEntity", result.name)
     }
 
     @Test
-    fun `toDeleteDto - JSON 문자열 생성`() {
+    fun `toDeleteDto - MutationResponse 생성`() {
         val result = delegator.toDeleteDto(1L, "TestEntity")
 
-        assertTrue(result.contains(""""action": "delete""""))
-        assertTrue(result.contains(""""id": "1""""))
-        assertTrue(result.contains(""""name": "TestEntity""""))
+        assertEquals("delete", result.action)
+        assertEquals("1", result.id)
+        assertEquals("TestEntity", result.name)
     }
 }
