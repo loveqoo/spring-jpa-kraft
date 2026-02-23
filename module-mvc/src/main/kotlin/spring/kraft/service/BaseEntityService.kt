@@ -7,7 +7,7 @@ import spring.kraft.jpa.BaseEntity
 import spring.kraft.jpa.type.Checkable
 
 interface BaseEntityService<ID, E, in CF, in UF> :
-    ReadOnlyService<ID, E>
+    ReadOnlyEntityService<ID, E>
     where ID : Comparable<ID>,
           E : BaseEntity<ID>,
           CF : Any,

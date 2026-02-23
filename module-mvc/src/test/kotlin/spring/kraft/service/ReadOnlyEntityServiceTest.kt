@@ -11,11 +11,11 @@ import org.springframework.data.jpa.repository.JpaRepository
 import spring.kraft.service.fixture.TestServiceEntity
 import java.util.Optional
 
-class ReadOnlyServiceTest {
+class ReadOnlyEntityServiceTest {
     private val mockRepo: JpaRepository<TestServiceEntity, Long> = mock()
 
     private val service =
-        object : ReadOnlyService<Long, TestServiceEntity> {
+        object : ReadOnlyEntityService<Long, TestServiceEntity> {
             override val repo: JpaRepository<TestServiceEntity, Long> = mockRepo
             override val tableName: String = "test_entity"
         }

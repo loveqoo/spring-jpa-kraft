@@ -84,13 +84,34 @@ class ArticleFormResolver(
 }
 ```
 
-### 3. Use in a Controller (planned)
+### 3. Implement a Controller
 
 ```kotlin
-@PostMapping
-fun create(@RequestBody form: ArticleCreateForm): ResponseEntity<*> {
-    val entity = with(resolver) { form.toEntity() }.getOrThrow()
-    return ResponseEntity.ok(repo.save(entity))
+@RestController
+@RequestMapping("/articles")
+class ArticleController(
+    override val service: ArticleService,
+) : BaseEntityController<Long, Article, ArticleService, ArticleDto, ArticleCreateForm, ArticleUpdateForm>() {
+    override val tableName = "article"
+
+    override fun toReadDto(entity: Article) = ArticleDto(entity.id!!, entity.title)
+
+    @GetMapping
+    override fun list(pageable: Pageable) = super.list(pageable)
+
+    @GetMapping("/{id}")
+    override fun getOne(@PathVariable id: Long) = super.getOne(id)
+
+    @PostMapping
+    override fun createOne(@Valid @RequestBody request: ArticleCreateForm, errors: Errors) =
+        super.createOne(request, errors)
+
+    @PutMapping
+    override fun updateOne(@Valid @RequestBody request: ArticleUpdateForm, errors: Errors) =
+        super.updateOne(request, errors)
+
+    @DeleteMapping("/{id}")
+    override fun delete(@PathVariable id: Long) = super.delete(id)
 }
 ```
 
@@ -226,10 +247,120 @@ class ArticleService(
 }
 ```
 
+## Controller Layer
+
+Controllers provide HTTP endpoint abstraction on top of the service layer. The architecture follows a **Controller → Delegator → Service** pattern.
+
+### Architecture
+
+```
+Controller (URL mapping + Mapper impl)
+    │
+    ├── delegates to ──▶ Delegator (DTO conversion, validation, service calls)
+    │                        │
+    │                        └── calls ──▶ Service
+    │
+    └── implements ──▶ Mapper (entity → DTO conversion)
+```
+
+- **Controller**: Abstract class that handles URL mapping. Implements the Mapper interface directly, passing `this` to the delegator. Only `service`, `tableName`, and mapper methods need to be overridden.
+- **Delegator**: Contains the actual logic -- DTO transformation via mapper, `Errors` validation (throws `ValidationException`), and service invocation.
+- **Mapper**: Interface that the controller implements to define entity-to-DTO conversion.
+
+### Controller Hierarchy
+
+```
+ReadOnlyEntityController<ID, E, S, D>                   (list, getOne)
+└── BaseEntityController<..., CF, UF>                    (createOne, updateOne, delete)
+    ├── SearchableEntityController<..., R>               (QueryDSL + DynamicSearch)
+    ├── RevisionEntityController<..., R>                 (Envers revision history)
+    └── SearchableRevisionEntityController<..., R>       (Searchable + Revision combined)
+```
+
+### Delegator Hierarchy
+
+```
+ReadOnlyDelegator<ID, E, S, D>                           (list, getOne with mapper::toReadDto)
+└── BaseEntityDelegator<..., CF, UF>                     (create/update/delete + Errors validation)
+    ├── SearchableEntityDelegator<..., R>                 (predicate search, null fallback, customParams)
+    ├── RevisionEntityDelegator<..., R>                   (revisions with mapper::toRevisionDto)
+    └── SearchableRevisionEntityDelegator<..., R>         (Searchable + Revision combined)
+```
+
+### Mapper Interfaces
+
+| Interface | Methods |
+|---|---|
+| `ReadOnlyMapper<ID, E, D>` | `toReadDto(entity): D` |
+| `BaseEntityMapper<ID, E, D>` | `toCreateDto(entity): String`, `toUpdateDto(entity): String`, `toDeleteDto(id): String` |
+| `RevisionEntityMapper<ID, E, D>` | `toRevisionDto(entity): D` |
+
+### Action Interfaces
+
+Each controller level has a corresponding Action interface that defines the public contract:
+
+| Action | Methods |
+|---|---|
+| `ReadOnlyAction` | `list(pageable)`, `getOne(id)` |
+| `BaseEntityAction` | `createOne(request, errors)`, `updateOne(request, errors)`, `delete(id)` |
+| `SearchableEntityAction` | `search(pageable, predicate?)`, `search(pageable, customParams)` |
+| `RevisionEntityAction` | `revisions(id)`, `revisionPages(id, pageable)` |
+
+Each Action also has an `*ActionExtend` variant with `<T : Any> transformer` overloads. These are implemented by the delegator but not directly exposed by the controller.
+
+### Key Design Decisions
+
+- **Controller as Mapper**: The controller itself implements the Mapper interface, keeping DTO conversion logic co-located with the endpoint definitions.
+- **Lazy delegator**: `delegator` is initialized via `by lazy`, allowing subclass controllers to override it with a more specific delegator type.
+- **Validation in Delegator**: `Errors.hasErrors()` check and `FormValidationException` throwing are handled in the delegator, not the controller. The exception carries structured `List<ObjectError>` for the exception handler to process.
+
+## Error Handling
+
+A default `@ControllerAdvice` (`DefaultExceptionHandler`) is provided with `@Order(LOWEST_PRECEDENCE)`, so it can be overridden by a higher-priority handler in the consuming application.
+
+### Handled Exceptions
+
+| Exception | Status | Details |
+|---|---|---|
+| `FormValidationException` | 400 | `FieldError` → field/message/rejectedValue; `ObjectError` → objectName/message |
+| `ConstraintViolationException` | 400 | Bean Validation violations → propertyPath/message/invalidValue |
+| `EntityNotFoundException` | 404 | Exception message |
+
+### Response Format
+
+```json
+{
+  "status": 400,
+  "error": "Bad Request",
+  "message": "Form validation failed",
+  "details": [
+    { "field": "name", "message": "must not be blank", "rejectedValue": "" }
+  ]
+}
+```
+
+### FormValidationException
+
+`FormValidationException` extends `jakarta.validation.ValidationException` and carries `List<ObjectError>` directly, enabling structured access to field names, messages, and rejected values without string parsing.
+
+### Overriding
+
+Register your own `@ControllerAdvice` with a higher `@Order` to override the default handler:
+
+```kotlin
+@ControllerAdvice
+@Order(0)
+class CustomExceptionHandler {
+    @ExceptionHandler(FormValidationException::class)
+    fun handle(ex: FormValidationException): ResponseEntity<MyErrorResponse> {
+        // custom handling
+    }
+}
+```
+
 ## Status
 
-- **Implemented**: `FormResolver0`~`4`, `UpdateForm`, Service layer (`ReadOnlyService`, `BaseEntityService`, `SearchableEntityService`, `RevisionEntityService`, `SearchableRevisionEntityService`, `AggregateRootAwareService`)
-- **Planned**: Controller integration, error response mapping
+- **Implemented**: `FormResolver0`~`4`, `UpdateForm`, Service layer (`ReadOnlyEntityService`, `BaseEntityService`, `SearchableEntityService`, `RevisionEntityService`, `SearchableRevisionEntityService`, `AggregateRootAwareService`), Controller layer (`ReadOnlyEntityController`, `BaseEntityController`, `SearchableEntityController`, `RevisionEntityController`, `SearchableRevisionEntityController` + corresponding Delegators, Mappers, Actions), Error response mapping (`DefaultExceptionHandler`, `FormValidationException`, `ErrorResponse`)
 
 ## Build
 

@@ -8,7 +8,7 @@
 
 - `module-core`: 공통 모듈 (`Result<T>` 확장 함수 — `flatMap`, `zip`)
 - `module-jpa`: JPA 관련 기반 코드 (Entity, Repository, EntityHelper 등)
-- `module-mvc`: Spring MVC 모듈 (FormResolver 계층, UpdateForm, Service 계층)
+- `module-mvc`: Spring MVC 모듈 (FormResolver 계층, UpdateForm, Service 계층, Controller 계층)
 - `buildSrc`: Gradle 빌드 설정
 
 ## 빌드
@@ -105,6 +105,36 @@
 - `AggregateRootAwareService<ID, E, RE>`: Aggregate Root 이벤트 발행
   - `entityType: Class<E>` 필수 — 런타임 타입 검사로 다른 aggregate 계층의 엔티티를 안전하게 무시
   - `publishEvent(entity)`: `entityType.isInstance(entity)`로 정확한 타입 검사 후 `aggregateRoot()` → `save`로 도메인 이벤트 발행
+
+**Controller 계층** (`spring.kraft.controller`):
+- Controller → Delegator → Service 3계층 구조
+- **Controller**: URL 매핑만 담당, 모든 호출을 delegator에 위임. 자신이 Mapper를 구현하여 delegator에 `this`로 전달
+  - `ReadOnlyEntityController<ID, E, S, D>`: 읽기 전용. `list(pageable)`, `getOne(id)`. `ReadOnlyMapper` 구현
+  - `BaseEntityController<ID, E, S, D, CF, UF>`: CRUD. `createOne`, `updateOne`, `delete` 추가. `BaseEntityMapper` 구현
+  - `SearchableEntityController<..., R>`: QueryDSL/동적 검색 추가
+  - `RevisionEntityController<..., R>`: Envers 리비전 조회 추가. `RevisionEntityMapper` 구현
+  - `SearchableRevisionEntityController<..., R>`: Searchable + Revision 결합
+- **Delegator**: 실제 로직 담당 — mapper를 통한 DTO 변환, Errors 검증, service 호출
+  - `ReadOnlyDelegator`: service에 `mapper::toReadDto` transformer 전달하여 Page/단건 DTO 변환
+  - `BaseEntityDelegator`: `Errors.hasErrors()` 검사 → `ValidationException` throw, `mapper.toCreateDto/toUpdateDto/toDeleteDto` 반환
+  - `SearchableEntityDelegator`: predicate null 시 `findAll` fallback, customParams 지원
+  - `RevisionEntityDelegator`: `mapper::toRevisionDto` transformer 전달
+  - `SearchableRevisionEntityDelegator`: Searchable + Revision 결합
+- **예외 처리** (`spring.kraft.controller.exception`):
+  - `FormValidationException`: `ValidationException` 확장, `List<ObjectError>`를 직접 운반하여 구조화된 에러 접근 가능
+  - `ErrorResponse` / `FieldErrorDetail`: 일관된 에러 응답 구조 (`status`, `error`, `message`, `details`)
+  - `DefaultExceptionHandler`: `@ControllerAdvice @Order(LOWEST_PRECEDENCE)` — 사용자가 더 높은 우선순위의 핸들러로 오버라이드 가능
+    - `FormValidationException` → 400 (FieldError/ObjectError 분기, details 포함)
+    - `ConstraintViolationException` → 400 (Bean Validation 위반, propertyPath/message 매핑)
+    - `EntityNotFoundException` → 404
+- **Mapper** 인터페이스: Controller가 직접 구현
+  - `ReadOnlyMapper<ID, E, D>`: `toReadDto(entity): D`
+  - `BaseEntityMapper<ID, E, D>`: `toCreateDto(entity): String`, `toUpdateDto(entity): String`, `toDeleteDto(id): String`
+  - `RevisionEntityMapper<ID, E, D>`: `toRevisionDto(entity): D`
+- **Action** 인터페이스: Controller가 외부에 노출하는 메서드 계약
+  - `ReadOnlyAction`/`BaseEntityAction`/`SearchableEntityAction`/`RevisionEntityAction`/`SearchableRevisionEntityAction`: 기본 Action
+  - `*ActionExtend`: `<T : Any> transformer` 오버로드 — delegator가 구현, controller에서 직접 노출 안 함
+- **설계 의도**: Controller는 `abstract class`로 상속하여 `service`, `tableName`, mapper 메서드만 구현하면 CRUD 엔드포인트 자동 완성. `delegator`는 `by lazy`로 지연 초기화
 
 ### 코딩 스타일 결정
 

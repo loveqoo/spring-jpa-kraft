@@ -7,7 +7,7 @@ import org.springframework.data.repository.findByIdOrNull
 import org.springframework.transaction.annotation.Transactional
 import spring.kraft.jpa.BaseEntity
 
-interface ReadOnlyService<ID, E>
+interface ReadOnlyEntityService<ID, E>
     where ID : Comparable<ID>,
           E : BaseEntity<ID> {
     val repo: JpaRepository<E, ID>
