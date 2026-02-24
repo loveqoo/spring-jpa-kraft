@@ -57,6 +57,14 @@
 **EntityHelper.compareTo():**
 - `check(!e1.isNew && !e2.isNew)` — 둘 다 영속 상태일 때만 id 비교 허용
 
+**DataSource 라우팅** (`spring.kraft.jpa.datasource`):
+- Master/Slave DataSource 자동 라우팅 — `@Transactional(readOnly = true)` 기반
+- `DataSourceRoutingProperties`: `kraft.datasource.master`/`slaves` YAML 설정 바인딩 (`HikariConfig` 직접 사용)
+- `ReadOnlyRoutingDataSource`: `AbstractRoutingDataSource` 구현. readOnly 트랜잭션 → slave (round-robin), 쓰기 → master
+- `DataSourceRoutingAutoConfiguration`: `@AutoConfiguration` + `@ConditionalOnProperty("kraft.datasource.master.jdbc-url")` — 설정 없으면 Spring Boot 기본 DataSource 유지
+- 구조: `LazyConnectionDataSourceProxy` → `ReadOnlyRoutingDataSource` → master/slave `HikariDataSource`
+- `LazyConnectionDataSourceProxy`로 Connection 획득을 지연하여 `TransactionSynchronizationManager.isCurrentTransactionReadOnly()` 설정 후 라우팅 결정
+
 ### module-core 설계
 
 **Result 확장 함수** (`spring.kraft.core.ResultExtensions`):

@@ -131,6 +131,47 @@ class MenuItem(
 }
 ```
 
+## DataSource Routing
+
+Auto-configuration for master/slave DataSource routing based on `@Transactional(readOnly = true)`.
+
+### Structure
+
+```
+LazyConnectionDataSourceProxy          ← delays Connection acquisition
+└── ReadOnlyRoutingDataSource          ← AbstractRoutingDataSource
+    ├── master: HikariDataSource       ← write transactions
+    └── slaves: HikariDataSource[]     ← read-only transactions (round-robin)
+```
+
+`LazyConnectionDataSourceProxy` defers the actual JDBC connection until a statement is executed,
+ensuring `TransactionSynchronizationManager.isCurrentTransactionReadOnly()` is set before routing.
+
+### Activation
+
+The auto-configuration activates only when `kraft.datasource.master.jdbc-url` is present.
+Without it, Spring Boot's default DataSource behavior is preserved.
+
+### YAML Configuration
+
+```yaml
+kraft:
+  datasource:
+    master:
+      jdbc-url: jdbc:mysql://master:3306/db
+      username: root
+      maximum-pool-size: 10
+    slaves:
+      - jdbc-url: jdbc:mysql://slave1:3306/db
+        username: reader
+        maximum-pool-size: 5
+      - jdbc-url: jdbc:mysql://slave2:3306/db
+        username: reader
+        maximum-pool-size: 5
+```
+
+Properties bind directly to `HikariConfig`, so all HikariCP options (`jdbc-url`, `username`, `password`, `maximum-pool-size`, etc.) are available via Spring Boot relaxed binding.
+
 ## Build
 
 ```bash
