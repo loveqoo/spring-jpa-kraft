@@ -10,12 +10,12 @@ abstract class FormResolver0<ID, E, in CF, in UF> :
           E : Identifiable<ID>,
           CF : Any,
           UF : UpdateForm<ID> {
-    abstract fun UF.modify(entity: E): Result<Unit>
+    abstract fun UF.update(entity: E): Result<Unit>
 
     override fun UF.resolveEntity(): Result<E> =
         runCatching {
             val entity = repo.getReferenceById(this.id).unproxy()
             require(this.id == entity.id)
             transform(entity)
-        }.flatMap { entity -> modify(entity).map { entity } }
+        }.flatMap { entity -> update(entity).map { entity } }
 }

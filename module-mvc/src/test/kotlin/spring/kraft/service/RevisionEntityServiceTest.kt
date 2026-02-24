@@ -35,7 +35,7 @@ class RevisionEntityServiceTest {
 
             override fun ServiceCreateForm.createEntity(): Result<TestServiceEntity> = Result.success(TestServiceEntity(name = this.name))
 
-            override fun ServiceUpdateForm.modify(entity: TestServiceEntity): Result<Unit> = Result.success(Unit)
+            override fun ServiceUpdateForm.update(entity: TestServiceEntity): Result<Unit> = Result.success(Unit)
         }
 
     private val service =

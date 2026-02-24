@@ -29,7 +29,7 @@ class BaseEntityServiceTest {
 
             override fun ServiceCreateForm.createEntity(): Result<TestServiceEntity> = Result.success(TestServiceEntity(name = this.name))
 
-            override fun ServiceUpdateForm.modify(entity: TestServiceEntity): Result<Unit> = Result.success(Unit)
+            override fun ServiceUpdateForm.update(entity: TestServiceEntity): Result<Unit> = Result.success(Unit)
         }
 
     private val service =
@@ -69,7 +69,7 @@ class BaseEntityServiceTest {
                 override fun ServiceCreateForm.createEntity(): Result<TestCheckableEntity> =
                     Result.success(TestCheckableEntity(name = this.name))
 
-                override fun ServiceUpdateForm.modify(entity: TestCheckableEntity): Result<Unit> = Result.success(Unit)
+                override fun ServiceUpdateForm.update(entity: TestCheckableEntity): Result<Unit> = Result.success(Unit)
             }
 
         val checkableService =
@@ -116,7 +116,7 @@ class BaseEntityServiceTest {
                 override fun ServiceCreateForm.createEntity(): Result<TestServiceEntity> =
                     Result.failure(IllegalArgumentException("invalid"))
 
-                override fun ServiceUpdateForm.modify(entity: TestServiceEntity): Result<Unit> = Result.success(Unit)
+                override fun ServiceUpdateForm.update(entity: TestServiceEntity): Result<Unit> = Result.success(Unit)
             }
 
         val failService =

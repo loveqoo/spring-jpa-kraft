@@ -79,7 +79,7 @@
 - Form → Entity 변환 파이프라인: 검증(`Validator`) → 부모 엔티티 조회 → 생성/수정
 - 모든 단계가 `Result<T>`로 합성되어 실패 시 short-circuit
 - `FormResolver<ID, E, CF, UF>`: 추상 기반. validation + `toEntity()` 템플릿 제공
-- `FormResolver0`: 부모 없는 엔티티. `createEntity()` + `modify()` 구현
+- `FormResolver0`: 부모 없는 엔티티. `createEntity()` + `update()` 구현
 - `FormResolver1`: 1개 부모 엔티티 참조. `flatMap` 체이닝으로 lazy evaluation
 - `FormResolver2~4`: 2~4개 부모 엔티티 참조. `zipLazy`로 부모 조회를 합성하여 가독성과 lazy evaluation 모두 확보
   - CF의 `parentId()` → `Result<P_ID>` (필수)

@@ -27,7 +27,7 @@ class FormResolver0Test {
 
             override fun TestCreateForm.createEntity(): Result<TestEntity> = Result.success(TestEntity(id = 1L, name = this.name))
 
-            override fun TestUpdateForm.modify(entity: TestEntity): Result<Unit> = Result.success(Unit)
+            override fun TestUpdateForm.update(entity: TestEntity): Result<Unit> = Result.success(Unit)
         }
 
     @BeforeEach
