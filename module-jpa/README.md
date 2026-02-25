@@ -52,7 +52,9 @@ Base class for aggregate roots. Extends `AbstractAggregateRoot<A>` and adds `Opt
 - `@Version` optimistic locking -- managed automatically by JPA
 - `versionUp()` -- touches `updatedAt` to trigger dirty detection and version increment
 - `delete()` -- soft delete (`deleted = true`)
-- Domain event publishing via `registerEvent()`
+- `addDomainEvent(event)` -- public wrapper for `registerEvent()`, allows external domain event registration
+- `getDomainEvents()` -- public wrapper for `domainEvents()`, returns registered events (mainly for testing)
+- Both methods annotated with `@Transient` to prevent JPA from interpreting them as column accessors
 
 ## Equality Strategy
 

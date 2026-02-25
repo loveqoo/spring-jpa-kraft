@@ -1,15 +1,20 @@
 package spring.kraft.service
 
 import org.junit.jupiter.api.Test
+import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.springframework.data.jpa.repository.JpaRepository
+import spring.kraft.service.event.AggregateRootVersionUpEvent
 import spring.kraft.service.fixture.OtherAggregateEntity
 import spring.kraft.service.fixture.OtherAggregateRoot
 import spring.kraft.service.fixture.TestAggregateEntity
 import spring.kraft.service.fixture.TestAggregateRoot
 import spring.kraft.service.fixture.TestServiceEntity
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 class AggregateRootAwareServiceTest {
     private val mockAggregateRootRepo: JpaRepository<TestAggregateRoot, Long> = mock()
@@ -21,13 +26,26 @@ class AggregateRootAwareServiceTest {
         }
 
     @Test
-    fun `publishEvent - AggregateRootAware 타입이면 aggregateRoot를 save`() {
+    fun `publishEvent - AggregateRootAware 타입이면 versionUp 후 aggregateRoot를 save`() {
         val root = TestAggregateRoot(id = 1L)
         val entity = TestAggregateEntity(id = 10L, root = root)
 
         service.publishEvent(entity)
 
-        verify(mockAggregateRootRepo).save(root)
+        assertNotNull(root.updatedAt)
+
+        val captor = argumentCaptor<TestAggregateRoot>()
+        verify(mockAggregateRootRepo).save(captor.capture())
+
+        val savedRoot = captor.firstValue
+        val events = savedRoot.getDomainEvents()
+        assertEquals(1, events.size)
+        val event = events.first()
+        assertTrue(event is AggregateRootVersionUpEvent<*>)
+        assertEquals(1L, event.aggregateRootId)
+        assertEquals(root::class.java, event.aggregateRootType)
+        assertEquals(10L, event.sourceEntityId)
+        assertEquals(TestAggregateEntity::class.java, event.sourceEntityType)
     }
 
     @Test
@@ -42,6 +60,26 @@ class AggregateRootAwareServiceTest {
     @Test
     fun `publishEvent - 완전히 무관한 타입도 무시`() {
         service.publishEvent("not an entity")
+
+        verify(mockAggregateRootRepo, never()).save(org.mockito.kotlin.any())
+    }
+
+    @Test
+    fun `publishEvent - aggregateRoot의 id가 null이면 무시`() {
+        val root = TestAggregateRoot(id = null)
+        val entity = TestAggregateEntity(id = 10L, root = root)
+
+        service.publishEvent(entity)
+
+        verify(mockAggregateRootRepo, never()).save(org.mockito.kotlin.any())
+    }
+
+    @Test
+    fun `publishEvent - 하위 엔티티의 id가 null이면 무시`() {
+        val root = TestAggregateRoot(id = 1L)
+        val entity = TestAggregateEntity(id = null, root = root)
+
+        service.publishEvent(entity)
 
         verify(mockAggregateRootRepo, never()).save(org.mockito.kotlin.any())
     }

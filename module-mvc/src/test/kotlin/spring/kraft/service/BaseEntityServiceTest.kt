@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.data.jpa.repository.JpaRepository
@@ -15,8 +16,11 @@ import spring.kraft.form.FormResolver
 import spring.kraft.form.FormResolver0
 import spring.kraft.service.fixture.ServiceCreateForm
 import spring.kraft.service.fixture.ServiceUpdateForm
+import spring.kraft.service.fixture.TestAggregateEntity
+import spring.kraft.service.fixture.TestAggregateRoot
 import spring.kraft.service.fixture.TestCheckableEntity
 import spring.kraft.service.fixture.TestServiceEntity
+import java.util.Optional
 
 class BaseEntityServiceTest {
     private val mockRepo: JpaRepository<TestServiceEntity, Long> = mock()
@@ -130,5 +134,109 @@ class BaseEntityServiceTest {
         assertThrows(IllegalArgumentException::class.java) {
             failService.create(ServiceCreateForm(name = "test"))
         }
+    }
+
+    @Test
+    fun `afterSave - AggregateRootAware 엔티티면 aggregateRootAwareServices에 publishEvent 호출`() {
+        val aggRepo: JpaRepository<TestAggregateEntity, Long> = mock()
+        val aggValidator: Validator = mock()
+        val mockAggregateRootAwareService: AggregateRootAwareService<Long, TestAggregateEntity, TestAggregateRoot> =
+            mock()
+        whenever(aggValidator.validate(any<Any>())).thenReturn(emptySet())
+
+        val root = TestAggregateRoot(id = 1L)
+        val aggResolver =
+            object : FormResolver0<Long, TestAggregateEntity, ServiceCreateForm, ServiceUpdateForm>() {
+                override val repo: JpaRepository<TestAggregateEntity, Long> = aggRepo
+                override val validator: Validator = aggValidator
+
+                override fun ServiceCreateForm.createEntity(): Result<TestAggregateEntity> =
+                    Result.success(TestAggregateEntity(id = 10L, root = root))
+
+                override fun ServiceUpdateForm.update(entity: TestAggregateEntity): Result<Unit> = Result.success(Unit)
+            }
+
+        val aggService =
+            object : BaseEntityService<Long, TestAggregateEntity, ServiceCreateForm, ServiceUpdateForm> {
+                override val repo: JpaRepository<TestAggregateEntity, Long> = aggRepo
+                override val tableName: String = "test_aggregate_entity"
+                override val formResolver:
+                    FormResolver<Long, TestAggregateEntity, ServiceCreateForm, ServiceUpdateForm> = aggResolver
+                override val aggregateRootAwareServices: List<AggregateRootAwareService<*, *, *>> =
+                    listOf(mockAggregateRootAwareService)
+            }
+
+        whenever(aggRepo.save(any<TestAggregateEntity>())).thenAnswer { it.arguments[0] }
+
+        aggService.create(ServiceCreateForm(name = "test"))
+
+        verify(mockAggregateRootAwareService).publishEvent(any())
+    }
+
+    @Test
+    fun `afterSave - 일반 엔티티면 publishEvent 미호출`() {
+        val mockAggregateRootAwareService: AggregateRootAwareService<Long, TestAggregateEntity, TestAggregateRoot> =
+            mock()
+
+        val serviceWithAgg =
+            object : BaseEntityService<Long, TestServiceEntity, ServiceCreateForm, ServiceUpdateForm> {
+                override val repo: JpaRepository<TestServiceEntity, Long> = mockRepo
+                override val tableName: String = "test_entity"
+                override val formResolver:
+                    FormResolver<Long, TestServiceEntity, ServiceCreateForm, ServiceUpdateForm> = resolver
+                override val aggregateRootAwareServices: List<AggregateRootAwareService<*, *, *>> =
+                    listOf(mockAggregateRootAwareService)
+            }
+
+        whenever(mockRepo.save(any<TestServiceEntity>())).thenAnswer { it.arguments[0] }
+
+        serviceWithAgg.create(ServiceCreateForm(name = "test"))
+
+        verify(mockAggregateRootAwareService, never()).publishEvent(any())
+    }
+
+    @Test
+    fun `beforeDelete - AggregateRootAware 엔티티면 publishEvent 호출 후 deleteById`() {
+        val aggRepo: JpaRepository<TestAggregateEntity, Long> = mock()
+        val aggValidator: Validator = mock()
+        val mockAggregateRootAwareService: AggregateRootAwareService<Long, TestAggregateEntity, TestAggregateRoot> =
+            mock()
+
+        val root = TestAggregateRoot(id = 1L)
+        val entity = TestAggregateEntity(id = 10L, root = root)
+        val aggResolver =
+            object : FormResolver0<Long, TestAggregateEntity, ServiceCreateForm, ServiceUpdateForm>() {
+                override val repo: JpaRepository<TestAggregateEntity, Long> = aggRepo
+                override val validator: Validator = aggValidator
+
+                override fun ServiceCreateForm.createEntity(): Result<TestAggregateEntity> = Result.success(entity)
+
+                override fun ServiceUpdateForm.update(entity: TestAggregateEntity): Result<Unit> = Result.success(Unit)
+            }
+
+        val aggService =
+            object : BaseEntityService<Long, TestAggregateEntity, ServiceCreateForm, ServiceUpdateForm> {
+                override val repo: JpaRepository<TestAggregateEntity, Long> = aggRepo
+                override val tableName: String = "test_aggregate_entity"
+                override val formResolver:
+                    FormResolver<Long, TestAggregateEntity, ServiceCreateForm, ServiceUpdateForm> = aggResolver
+                override val aggregateRootAwareServices: List<AggregateRootAwareService<*, *, *>> =
+                    listOf(mockAggregateRootAwareService)
+            }
+
+        whenever(aggRepo.findById(10L)).thenReturn(Optional.of(entity))
+
+        aggService.delete(10L)
+
+        verify(mockAggregateRootAwareService).publishEvent(entity)
+        verify(aggRepo).deleteById(10L)
+    }
+
+    @Test
+    fun `beforeDelete - aggregateRootAwareServices가 비어있으면 findById 호출 없이 바로 삭제`() {
+        service.delete(1L)
+
+        verify(mockRepo, never()).findById(any())
+        verify(mockRepo).deleteById(1L)
     }
 }

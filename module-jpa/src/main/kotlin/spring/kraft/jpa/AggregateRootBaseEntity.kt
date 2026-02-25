@@ -3,6 +3,7 @@ package spring.kraft.jpa
 import jakarta.persistence.Column
 import jakarta.persistence.EntityListeners
 import jakarta.persistence.MappedSuperclass
+import jakarta.persistence.Transient
 import jakarta.persistence.Version
 import org.hibernate.Hibernate
 import org.springframework.data.annotation.CreatedBy
@@ -58,6 +59,14 @@ abstract class AggregateRootBaseEntity<ID : Comparable<ID>, A : AggregateRootBas
     override fun delete() {
         deleted = true
     }
+
+    @Transient
+    fun addDomainEvent(event: Any) {
+        registerEvent(event)
+    }
+
+    @Transient
+    fun getDomainEvents(): Collection<Any> = domainEvents()
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

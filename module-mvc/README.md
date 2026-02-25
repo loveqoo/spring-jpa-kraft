@@ -192,11 +192,22 @@ Extends `ReadOnlyService`. Uses `FormResolver` to create/update entities.
 
 | Method | Description |
 |---|---|
-| `create(request)` | Resolves form → saves entity → calls `check()` if `Checkable` |
-| `update(request)` | Resolves form → saves entity → calls `check()` if `Checkable` |
-| `delete(id)` | Delegates to `repo.deleteById()` |
+| `create(request)` | Resolves form → saves entity → calls `check()` if `Checkable` → `afterSave()` |
+| `update(request)` | Resolves form → saves entity → calls `check()` if `Checkable` → `afterSave()` |
+| `delete(id)` | `beforeDelete()` → `repo.deleteById()` |
 
 Result pipeline failures are unwrapped via `getOrThrow()`, propagating exceptions to the caller.
+
+#### Lifecycle Hooks
+
+| Hook | Trigger | Default Behavior |
+|---|---|---|
+| `afterSave(entity)` | After `create`/`update` saves the entity | If entity is `AggregateRootAware`, calls `publishEvent` on all `aggregateRootAwareServices` |
+| `beforeDelete(id)` | Before `delete` removes the entity | If entity is `AggregateRootAware`, calls `publishEvent` on all `aggregateRootAwareServices` |
+
+Both hooks run **inside** the `@Transactional` method, guaranteeing atomicity with the main operation. If the aggregate root `save` or the `delete` fails, everything rolls back together.
+
+`aggregateRootAwareServices` defaults to `emptyList()`. Inject `List<AggregateRootAwareService<*, *, *>>` in the implementing class to enable automatic aggregate root version management.
 
 ### SearchableEntityService
 
@@ -235,6 +246,21 @@ fun publishEvent(entity: Any)
 
 Uses `entityType.isInstance(entity)` for exact runtime type checking, so only entities of the expected type trigger event publishing. Non-matching types -- including `AggregateRootAware` entities from different aggregate hierarchies -- are silently ignored.
 
+When invoked, `publishEvent` performs: `aggregateRoot()` → `versionUp()` → `addDomainEvent(AggregateRootVersionUpEvent)` → `save()`. If `root.id` or `entity.id` is `null` (transient), the call is silently skipped.
+
+#### AggregateRootVersionUpEvent
+
+A domain event registered on the aggregate root and automatically published by Spring Data on `save()`.
+
+| Field | Type | Description |
+|---|---|---|
+| `aggregateRootId` | `ID` | The aggregate root's identifier |
+| `aggregateRootType` | `Class<*>` | Runtime type of the aggregate root |
+| `sourceEntityId` | `Any` | The child entity that triggered the version bump |
+| `sourceEntityType` | `Class<*>` | Runtime type of the source entity |
+
+Listen with `@EventListener` or `@TransactionalEventListener` to react to aggregate root changes (e.g., cache invalidation, external sync).
+
 ### Usage Example
 
 ```kotlin
@@ -244,6 +270,16 @@ class ArticleService(
     override val formResolver: ArticleFormResolver,
 ) : BaseEntityService<Long, Article, ArticleCreateForm, ArticleUpdateForm> {
     override val tableName = "article"
+}
+
+// For entities that belong to an aggregate root:
+@Service
+class OrderItemService(
+    override val repo: OrderItemRepository,
+    override val formResolver: OrderItemFormResolver,
+    override val aggregateRootAwareServices: List<AggregateRootAwareService<*, *, *>>,
+) : BaseEntityService<Long, OrderItem, OrderItemCreateForm, OrderItemUpdateForm> {
+    override val tableName = "order_item"
 }
 ```
 
@@ -395,7 +431,7 @@ class CustomExceptionHandler {
 
 ## Status
 
-- **Implemented**: `FormResolver0`~`4`, `UpdateForm`, Service layer (`ReadOnlyEntityService`, `BaseEntityService`, `SearchableEntityService`, `RevisionEntityService`, `SearchableRevisionEntityService`, `AggregateRootAwareService`), Controller layer (`ReadOnlyEntityController`, `BaseEntityController`, `SearchableEntityController`, `RevisionEntityController`, `SearchableRevisionEntityController` + corresponding Delegators, Mappers, Actions), Error response mapping (`DefaultExceptionHandler`, `FormValidationException`, `ErrorResponse`)
+- **Implemented**: `FormResolver0`~`4`, `UpdateForm`, Service layer (`ReadOnlyEntityService`, `BaseEntityService` with lifecycle hooks, `SearchableEntityService`, `RevisionEntityService`, `SearchableRevisionEntityService`, `AggregateRootAwareService`, `AggregateRootVersionUpEvent`), Controller layer (`ReadOnlyEntityController`, `BaseEntityController`, `SearchableEntityController`, `RevisionEntityController`, `SearchableRevisionEntityController` + corresponding Delegators, Mappers, Actions), Error response mapping (`DefaultExceptionHandler`, `FormValidationException`, `ErrorResponse`)
 
 ## Build
 

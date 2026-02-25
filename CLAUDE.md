@@ -30,7 +30,10 @@
   - `@Version`으로 낙관적 락 — JPA가 자동 관리
   - `versionUp()`: `updatedAt = LocalDateTime.now()`로 dirty 유발 → 하위 엔티티 변경 시 aggregate version 증가 트리거
   - `delete()`: soft delete (`deleted = true`)
-  - 하위 엔티티 변경 시 version 증가는 Spring 이벤트 + AOP로 구현 예정
+  - `@Transient addDomainEvent(event)`: `AbstractAggregateRoot.registerEvent()`의 public 래퍼 — 외부에서 도메인 이벤트 등록 가능
+  - `@Transient getDomainEvents()`: `AbstractAggregateRoot.domainEvents()`의 public 래퍼 — 등록된 이벤트 조회 (주로 테스트용)
+  - 두 메서드 모두 `@Transient` 적용 — JPA가 컬럼으로 오해하지 않도록 방지
+  - 하위 엔티티 변경 시 version 증가는 `BaseEntityService`의 lifecycle hook(`afterSave`/`beforeDelete`)으로 자동 처리 — `@Transactional` 메서드 내부에서 aggregate root `versionUp()` + `save` 수행
 
 **type 패키지** (`spring.kraft.jpa.type`): 엔티티 관련 인터페이스 정의
 - `Identifiable<ID>`: `id`, `isNew` (순수 식별) + `unproxy()` 확장 함수. `ID : Comparable<ID>` 제약으로 `Long`, `UUID`, `String`, `ULID` 등 수용
@@ -101,7 +104,10 @@
   - `findById`: nullable 반환 (`E?`, `T?`) — 존재하지 않으면 `null`
   - `getOne`: non-null 반환 (`E`, `T`) — `getReferenceById` 위임, 존재하지 않으면 예외
 - `BaseEntityService<ID, E, CF, UF>`: `ReadOnlyService` 확장. FormResolver 기반 `create`/`update`/`delete`
-  - `create`/`update` 시 `formResolver.run { request.toEntity() }` → `repo.save()` → `Checkable`이면 `check()` 호출
+  - `create`/`update` 시 `formResolver.run { request.toEntity() }` → `repo.save()` → `Checkable`이면 `check()` → `afterSave()` 호출
+  - `delete` 시 `beforeDelete()` → `repo.deleteById()` 순서로 실행
+  - `afterSave(entity)` / `beforeDelete(id)`: lifecycle hook — `AggregateRootAware` 엔티티면 `aggregateRootAwareServices`에 `publishEvent` 호출. `@Transactional` 메서드 내부에서 실행되어 트랜잭션 원자성 보장
+  - `aggregateRootAwareServices`: `List<AggregateRootAwareService<*, *, *>>` (기본값 `emptyList()`) — 구현 클래스에서 주입하면 자동 연동
   - Result 파이프라인 결과를 `getOrThrow()`로 언래핑 — 실패 시 예외 전파
 - `SearchableEntityService<ID, E, R, CF, UF>`: `BaseEntityService` 확장. `R`이 `QuerydslPredicateExecutor` + `DynamicSearchRepository` 구현 필요
   - `search(predicate, pageable)`: QueryDSL Predicate 기반 검색
@@ -112,7 +118,19 @@
 - `SearchableRevisionEntityService<ID, E, R, CF, UF>`: `SearchableEntityService` + `RevisionEntityService` 결합
 - `AggregateRootAwareService<ID, E, RE>`: Aggregate Root 이벤트 발행
   - `entityType: Class<E>` 필수 — 런타임 타입 검사로 다른 aggregate 계층의 엔티티를 안전하게 무시
-  - `publishEvent(entity)`: `entityType.isInstance(entity)`로 정확한 타입 검사 후 `aggregateRoot()` → `save`로 도메인 이벤트 발행
+  - `publishEvent(entity)`: `entityType.isInstance(entity)`로 정확한 타입 검사 후 `aggregateRoot()` → `versionUp()` → `addDomainEvent(AggregateRootVersionUpEvent)` → `save`
+  - root/entity의 `id`가 null(비영속)이면 early return — NPE 방지
+  - `save()` 시점에 Spring Data가 `AbstractAggregateRoot`에 등록된 이벤트를 자동 발행 + clear — 리스너에서 Redis 동기화 등 사이드이펙트 처리 가능
+
+**Event** (`spring.kraft.service.event`):
+- `AggregateRootVersionUpEvent<ID>`: Aggregate Root의 version이 증가할 때 발행되는 도메인 이벤트
+  - `aggregateRootId: ID` — 대상 aggregate root의 식별자
+  - `aggregateRootType: Class<*>` — 리스너가 특정 aggregate 타입만 필터 가능
+  - `sourceEntityId: Any` — version 증가를 유발한 하위 엔티티의 식별자
+  - `sourceEntityType: Class<*>` — 원인 엔티티 타입 (리스너에서 원인 추적 가능)
+  - `addDomainEvent()`로 등록 → `save()` 시 Spring Data가 자동 발행 + clear
+  - 이벤트 흐름: `BaseEntityService.afterSave`/`beforeDelete` → `AggregateRootAwareService.publishEvent()` → `versionUp()` + `addDomainEvent(AggregateRootVersionUpEvent)` → `save()` → Spring Data 이벤트 발행 → `@EventListener`/`@TransactionalEventListener`에서 처리
+
 
 **Controller 계층** (`spring.kraft.controller`):
 - Controller → Delegator → Service 3계층 구조
