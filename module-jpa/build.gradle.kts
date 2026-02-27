@@ -2,21 +2,17 @@ plugins {
     `java-library`
     alias(libs.plugins.kotlin.spring)
     alias(libs.plugins.kotlin.jpa)
-    kotlin("kapt")
+    alias(libs.plugins.ksp)
 }
 
 dependencies {
     implementation(project(":module-core"))
     api(libs.spring.boot.starter.data.jpa)
     api(libs.spring.data.envers)
-    api(variantOf(libs.querydsl.jpa) { classifier("jakarta") })
-    kapt(variantOf(libs.querydsl.apt) { classifier("jakarta") })
+    api(libs.openfeign.querydsl.jpa)
+    ksp(libs.openfeign.querydsl.ksp)
     runtimeOnly(libs.h2)
     testImplementation(libs.spring.boot.starter.data.jpa.test)
-}
-
-tasks.matching { it.name == "kaptTestKotlin" || it.name == "kaptGenerateStubsTestKotlin" }.configureEach {
-    enabled = false
 }
 
 allOpen {

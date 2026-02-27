@@ -42,5 +42,10 @@ fun Project.configureKotlin(jvmTarget: JvmTarget, vararg extraArgs: String) {
 
 fun Project.applyKtlint() {
     apply(mapOf("plugin" to "org.jlleitschuh.gradle.ktlint"))
+    configureExtension<KtlintExtension> {
+        filter {
+            exclude { it.file.path.contains("/generated/") }
+        }
+    }
 }
 

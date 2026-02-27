@@ -10,22 +10,26 @@ import org.springframework.data.annotation.CreatedBy
 import org.springframework.data.annotation.CreatedDate
 import org.springframework.data.annotation.LastModifiedBy
 import org.springframework.data.annotation.LastModifiedDate
-import org.springframework.data.domain.AbstractAggregateRoot
+import org.springframework.data.domain.AfterDomainEventPublication
+import org.springframework.data.domain.DomainEvents
 import org.springframework.data.jpa.domain.support.AuditingEntityListener
 import spring.kraft.jpa.type.Identifiable
 import spring.kraft.jpa.type.OptimisticLockSupport
 import spring.kraft.jpa.type.SoftDeletable
 import spring.kraft.jpa.type.Traceable
 import java.time.LocalDateTime
+import java.util.Collections
 
 @EntityListeners(AuditingEntityListener::class)
 @MappedSuperclass
 abstract class AggregateRootBaseEntity<ID : Comparable<ID>, A : AggregateRootBaseEntity<ID, A>> :
-    AbstractAggregateRoot<A>(),
     Identifiable<ID>,
     Traceable,
     OptimisticLockSupport,
     SoftDeletable {
+    @Transient
+    private val _domainEvents: MutableList<Any> = mutableListOf()
+
     override val isNew: Boolean
         get() = id == null
 
@@ -60,9 +64,19 @@ abstract class AggregateRootBaseEntity<ID : Comparable<ID>, A : AggregateRootBas
         deleted = true
     }
 
+    @DomainEvents
+    @Transient
+    fun domainEvents(): Collection<Any> = Collections.unmodifiableList(_domainEvents)
+
+    @AfterDomainEventPublication
+    @Transient
+    fun clearDomainEvents() {
+        _domainEvents.clear()
+    }
+
     @Transient
     fun addDomainEvent(event: Any) {
-        registerEvent(event)
+        _domainEvents.add(event)
     }
 
     @Transient

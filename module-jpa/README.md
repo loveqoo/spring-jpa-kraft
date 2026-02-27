@@ -47,14 +47,15 @@ Base class for general entities. Implements `Identifiable` + `Traceable`.
 
 ### AggregateRootBaseEntity\<A, ID\>
 
-Base class for aggregate roots. Extends `AbstractAggregateRoot<A>` and adds `OptimisticLockSupport` + `SoftDeletable`.
+Base class for aggregate roots. Implements `Identifiable`, `Traceable`, `OptimisticLockSupport`, and `SoftDeletable`. Does **not** extend `AbstractAggregateRoot` -- uses its own `@Transient` event collection with `@DomainEvents`/`@AfterDomainEventPublication` for KSP compatibility.
 
 - `@Version` optimistic locking -- managed automatically by JPA
 - `versionUp()` -- touches `updatedAt` to trigger dirty detection and version increment
 - `delete()` -- soft delete (`deleted = true`)
-- `addDomainEvent(event)` -- public wrapper for `registerEvent()`, allows external domain event registration
-- `getDomainEvents()` -- public wrapper for `domainEvents()`, returns registered events (mainly for testing)
-- Both methods annotated with `@Transient` to prevent JPA from interpreting them as column accessors
+- `addDomainEvent(event)` -- adds to internal `@Transient` event list
+- `getDomainEvents()` -- returns registered events (mainly for testing)
+- `@DomainEvents domainEvents()` / `@AfterDomainEventPublication clearDomainEvents()` -- Spring Data auto-publishes on `save()` and clears afterwards
+- All event-related methods annotated with `@Transient` to prevent JPA from interpreting them as column accessors
 
 ## Equality Strategy
 
