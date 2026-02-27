@@ -9,6 +9,9 @@
 - `module-core`: 공통 모듈 (`Result<T>` 확장 함수 — `flatMap`, `zip`)
 - `module-jpa`: JPA 관련 기반 코드 (Entity, Repository, EntityHelper 등)
 - `module-mvc`: Spring MVC 모듈 (FormResolver 계층, UpdateForm, Service 계층, Controller 계층)
+- `module-ksp-annotations`: KSP 어노테이션 모듈 (`@KraftAggregate` 등). 순수 Kotlin — 프레임워크 의존성 없음
+- `module-ksp-processor`: KSP 프로세서 모듈. `module-ksp-annotations` + KSP API 의존. 타입 안전 ID + InternalMediator 코드 생성
+- `module-dbml-parser`: DBML JSON 파서 모듈. `@dbml/core` export JSON → 내부 데이터 모델 변환. 순수 Kotlin + Jackson
 - `buildSrc`: Gradle 빌드 설정
 
 ## 빌드
@@ -16,6 +19,9 @@
 - `./gradlew :module-core:build` — module-core 빌드
 - `./gradlew :module-jpa:build` — module-jpa 빌드
 - `./gradlew :module-mvc:build` — module-mvc 빌드
+- `./gradlew :module-ksp-annotations:build` — module-ksp-annotations 빌드
+- `./gradlew :module-ksp-processor:build` — module-ksp-processor 빌드
+- `./gradlew :module-dbml-parser:build` — module-dbml-parser 빌드
 - ktlint가 check 태스크에 포함되어 있으므로 빌드 시 자동으로 코드 스타일 검사됨
 
 ## 아키텍처 결정 사항
@@ -25,14 +31,15 @@
 **Entity 계층:**
 - `BaseEntity<ID>`: 모든 엔티티의 기반. audit 컬럼, equals/hashCode 제공. ID 타입은 제네릭(`ID : Comparable<ID>`)
   - `@Id`, `@GeneratedValue` 없음 → 하위 클래스에서 PK 전략 결정
-- `AggregateRootBaseEntity<A, ID>`: `AbstractAggregateRoot<A>` 상속. `Identifiable<ID>`, `Traceable`, `OptimisticLockSupport`, `SoftDeletable` 구현
+- `AggregateRootBaseEntity<ID, A>`: `Identifiable<ID>`, `Traceable`, `OptimisticLockSupport`, `SoftDeletable` 구현. `AbstractAggregateRoot` 상속 없음 — KSP 호환성 확보
   - `@Id`, `@GeneratedValue` 없음 → 하위 클래스에서 PK 전략 결정
   - `@Version`으로 낙관적 락 — JPA가 자동 관리
   - `versionUp()`: `updatedAt = LocalDateTime.now()`로 dirty 유발 → 하위 엔티티 변경 시 aggregate version 증가 트리거
   - `delete()`: soft delete (`deleted = true`)
-  - `@Transient addDomainEvent(event)`: `AbstractAggregateRoot.registerEvent()`의 public 래퍼 — 외부에서 도메인 이벤트 등록 가능
-  - `@Transient getDomainEvents()`: `AbstractAggregateRoot.domainEvents()`의 public 래퍼 — 등록된 이벤트 조회 (주로 테스트용)
-  - 두 메서드 모두 `@Transient` 적용 — JPA가 컬럼으로 오해하지 않도록 방지
+  - 도메인 이벤트: `@Transient private val _domainEvents` 리스트로 자체 관리. `@DomainEvents`/`@AfterDomainEventPublication` 어노테이션 기반 — `save()` 시 Spring Data가 자동 발행 + clear
+  - `@Transient addDomainEvent(event)`: `_domainEvents`에 이벤트 추가
+  - `@Transient getDomainEvents()`: 등록된 이벤트 조회 (주로 테스트용)
+  - 모든 이벤트 관련 메서드에 `@Transient` 적용 — JPA가 컬럼으로 오해하지 않도록 방지
   - 하위 엔티티 변경 시 version 증가는 `BaseEntityService`의 lifecycle hook(`afterSave`/`beforeDelete`)으로 자동 처리 — `@Transactional` 메서드 내부에서 aggregate root `versionUp()` + `save` 수행
 
 **type 패키지** (`spring.kraft.jpa.type`): 엔티티 관련 인터페이스 정의
@@ -50,7 +57,7 @@
 - `DynamicSearchRepository<ID, T>`: 모든 엔티티의 공통 검색 인터페이스. `Map<String, String>`으로 동적 where 조건 구성 (인접 테이블 조인 검색 포함)
 - `SiblingsAwareRepository<E, P_ID>`: `ParentIdAware` 엔티티 대상, 같은 부모 ID를 가진 형제 엔티티 조회 (자기 자신 포함)
 - `JPQLQuery<T>.fetchPage()`: QueryDSL 페이징 헬퍼 확장 함수. count 쿼리를 pagination 적용 전에 실행
-- QueryDSL: KAPT 기반 (`querydsl-jpa`/`querydsl-apt` jakarta classifier)
+- QueryDSL: OpenFeign fork (`io.github.openfeign.querydsl:querydsl-jpa:7.x`) + KSP 기반 코드 생성 (`querydsl-ksp-codegen`). Jakarta 전용
 
 **동등성(equals/hashCode) 전략:**
 - 영속 상태 (`isNew == false`): `id` 기반 비교
@@ -120,7 +127,7 @@
   - `entityType: Class<E>` 필수 — 런타임 타입 검사로 다른 aggregate 계층의 엔티티를 안전하게 무시
   - `publishEvent(entity)`: `entityType.isInstance(entity)`로 정확한 타입 검사 후 `aggregateRoot()` → `versionUp()` → `addDomainEvent(AggregateRootVersionUpEvent)` → `save`
   - root/entity의 `id`가 null(비영속)이면 early return — NPE 방지
-  - `save()` 시점에 Spring Data가 `AbstractAggregateRoot`에 등록된 이벤트를 자동 발행 + clear — 리스너에서 Redis 동기화 등 사이드이펙트 처리 가능
+  - `save()` 시점에 Spring Data가 `@DomainEvents` 어노테이션을 감지하여 이벤트를 자동 발행 + `@AfterDomainEventPublication`으로 clear — 리스너에서 Redis 동기화 등 사이드이펙트 처리 가능
 
 **Event** (`spring.kraft.service.event`):
 - `AggregateRootVersionUpEvent<ID>`: Aggregate Root의 version이 증가할 때 발행되는 도메인 이벤트
@@ -166,6 +173,101 @@
   - Controller는 ActionExtend를 몰라도 되지만, 필요하면 `delegator`를 통해 확장 기능에 접근 가능
   - 비슷한 타입의 Controller가 각각 공통 확장 로직을 중복 구현하는 것을 방지
 - **설계 의도**: Controller는 `abstract class`로 상속하여 `service`, `tableName`, mapper 메서드만 구현하면 CRUD 엔드포인트 자동 완성. `delegator`는 `by lazy`로 지연 초기화
+
+### module-ksp-annotations 설계
+
+**`CommonMethod`** — Mediator 공통 메서드 enum
+- `FIND_BY_ID`, `GET_ONE`, `FIND_ALL`, `CREATE`, `UPDATE`, `DELETE`
+- `@KraftAggregate(exclude = [...])` 에서 사용하여 특정 공통 메서드를 Mediator에서 제외
+
+**`@KraftExpose`** — 메서드 레벨 어노테이션. 서비스의 커스텀 메서드를 Mediator에 노출
+- `name: String = ""` — 빈 문자열이면 기본 네이밍 규칙 적용 (동사 접두사 감지 후 엔티티명 삽입)
+- `@Retention(SOURCE)` — 컴파일 타임 전용
+- `suspend` 함수 지원 — `suspend` 키워드가 인터페이스/AggregateMediator에 그대로 전파
+
+**`@KraftAggregate(root, exclude, mediatorPackage)`** — 서비스 클래스에 부착하여 Aggregate Root를 지정
+- `root`: Aggregate Root 엔티티 클래스 참조. 같은 root를 지정한 서비스들이 하나의 Mediator로 그룹화
+- `exclude: Array<CommonMethod> = []` — Mediator에서 제외할 공통 메서드 목록
+- `mediatorPackage: String = ""` — 빈 문자열이면 기본 규칙(`{basePackage}.mediator`) 적용. 같은 root 그룹 내 충돌 시 에러 + Mediator 미생성
+- `@Retention(SOURCE)` — 컴파일 타임에만 사용, 런타임에 없음
+
+### module-ksp-processor 설계
+
+**KSP 코드 생성 흐름:**
+1. `@KraftAggregate` 어노테이션이 붙은 서비스 클래스 스캔
+2. `findSupertypeArgs()`로 supertype 체인 순회하여 `BaseEntityService` 또는 `ReadOnlyEntityService` 탐지 + 타입 파라미터 추출
+   - 중간 추상 클래스가 끼어도 제네릭 타입 치환을 정확히 수행 (`buildTypeParamMapping` + `substituteType`)
+   - 예: `ConcreteService : AbstractService<Long, Order>` → `AbstractService<ID, E> : BaseEntityService<ID, E, CF, UF>` — ID→Long, E→Order 치환
+3. `exclude`, `mediatorPackage` 파라미터 추출 + `@KraftExpose` 메서드 스캔 (`suspend` 함수 포함)
+4. `root` 기준으로 그룹화
+5. `mediatorPackage` 충돌 감지 — 같은 root 그룹 내 서로 다른 값이면 `logger.error()` + 해당 그룹 Mediator 미생성
+6. 그룹별 타입 안전 ID value class + InternalMediator 코드 생성 (공통 메서드 제외 + 커스텀 메서드 포함)
+
+**패키지 배치 규칙:**
+- root 엔티티 패키지에서 마지막 세그먼트를 제거하여 기반 패키지 결정 (예: `com.example.order.entity.OrderRoot` → `com.example.order`)
+- ID 클래스: `{기반패키지}.id` (예: `com.example.order.id.OrderRootId`)
+- Mediator: `{기반패키지}.mediator` (예: `com.example.order.mediator.OrderRootInternalMediator`)
+
+**`TypedIdGenerator`** — 엔티티별 타입 안전 ID 생성:
+- `@JvmInline value class {EntityName}Id(val value: {PrimitiveId})` + `Comparable` 구현
+- 확장 함수 `{PrimitiveId}.to{EntityName}Id()` 포함
+- 잘못된 ID 타입 전달을 컴파일 타임에 차단
+- 중복 생성 방지 키에 `idType` FQN 포함 — 같은 entityName + 다른 ID 타입도 정확히 구분
+
+**`InternalMediatorGenerator`** — 인터페이스/구현 분리 Mediator 코드 생성:
+- **인터페이스 분리 원칙**: 각 엔티티별 `{E}InternalMediator` 인터페이스 + 하나의 `{Root}AggregateMediator` open 클래스
+- **인터페이스** (`{E}InternalMediator`): 해당 엔티티 입장에서 Aggregate 내 *다른* 엔티티의 **조회 메서드만** 선언 (body 없음)
+  - 포함: `find{OtherE}ById`, `getOne{OtherE}`, `findAll{OtherE}` + `@KraftExpose` 커스텀 메서드
+  - 제외: CUD(create/update/delete) — 각 서비스가 자체 처리
+  - 단일 엔티티 Aggregate → 빈 인터페이스 (다른 엔티티 없음)
+- **AggregateMediator** (`{Root}AggregateMediator`): 모든 인터페이스 구현, `open class`, `@Component` 없음
+  - 생성자에 모든 서비스 `@Lazy protected val`로 주입 — 순환 의존성 방지 + 사용자가 상속하여 접근 가능
+  - `override fun` + 서비스 위임 (`id.value`로 타입 ID 언래핑)
+  - 사용자가 상속하여 `@Component` 부착 + 자유 확장
+- **사용 패턴**: 각 서비스는 자신의 `{E}InternalMediator` 타입으로 주입받아 다른 엔티티 조회 접근
+- **`exclude` 어노테이션**: `FIND_BY_ID`, `GET_ONE`, `FIND_ALL`만 유효. `CREATE`/`UPDATE`/`DELETE`는 mediator 대상 아니므로 무시
+- **커스텀 메서드 생성**: `@KraftExpose` 메서드를 인터페이스에 선언 + AggregateMediator에 override 구현
+  - `suspend` 함수 지원 — `suspend` 키워드가 인터페이스 선언과 AggregateMediator override 양쪽에 그대로 전파
+  - 네이밍: `overrideName` 있으면 그대로, 없으면 동사 접두사 감지 후 엔티티명 삽입 (예: `findByStatus` + `Order` → `findOrderByStatus`)
+  - 동사 미감지 시: `{entityName(소문자)}{OriginalName(대문자)}` (예: `customLogic` → `orderCustomLogic`)
+  - 파라미터/반환 타입을 재귀적으로 렌더링 (`renderType()` — simple name + 제네릭 + nullable)
+- **패키지 override**: `mediatorPackageOverride`가 지정되면 해당 패키지에 생성
+- **import 최적화**: `Page`/`Pageable`은 `findAll`이 사용되는 entry가 있을 때만 import. 커스텀 메서드 타입도 자동 수집 (`kotlin.*`, `java.lang.*` 제외)
+
+**`CustomMethodEntry`** — `@KraftExpose` 메서드 메타데이터:
+- `declaration: KSFunctionDeclaration` — 원본 함수 선언
+- `overrideName: String` — 빈 문자열이면 기본 네이밍 적용
+- `isSuspend: Boolean` — `suspend` 함수 여부
+
+**`ServiceEntry`** — 어노테이션에서 추출한 서비스 메타데이터:
+- `classDeclaration`, `rootType`, `entityName`, `idType`, `entityType`
+- `createFormType?`, `updateFormType?` — `BaseEntityService`일 때만
+- `isMutable` — `BaseEntityService` 구현 여부
+- `excludedMethods: Set<String>` — `CommonMethod` enum name 문자열 집합
+- `customMethods: List<CustomMethodEntry>` — `@KraftExpose` 메서드 목록
+- `mediatorPackage: String` — 빈 문자열이면 기본 패키지 규칙 적용
+
+**테스트:** `kotlin-compile-testing-ksp` (kctfork) 라이브러리로 KSP 컴파일 테스트
+- 테스트용 서비스 인터페이스 스텁 포함, 생성된 파일 존재 + 내용 검증
+
+### module-dbml-parser 설계
+
+**목적:** DDL 기반 코드 생성 파이프라인의 파싱 단계. 외부 도구(`@dbml/core` npm)가 MySQL DDL → DBML → JSON 변환을 수행하고, 이 모듈은 JSON을 입력으로 받아 내부 데이터 모델로 변환
+
+**입력:** `@dbml/core` export JSON 포맷 — `schemas[].tables[].fields/indexes` 구조. `refs`(FK)는 무시
+
+**데이터 모델** (`spring.kraft.dbml`):
+- `DbmlSchema`: 테이블 목록
+- `DbmlTable`: 이름, 스키마, 컬럼 목록, 인덱스 목록
+- `DbmlColumn`: 이름, 타입명(`typeName`), 타입값(`typeValue` — varchar 길이 등), pk, notNull, unique, autoIncrement, defaultValue, note
+- `DbmlIndex`: 이름, 컬럼 목록, unique, pk
+
+**파서** (`DbmlJsonParser`):
+- Jackson `ObjectMapper`로 JSON 파싱 → private raw 모델 → 공개 데이터 모델 변환
+- `pk=true` → `notNull=true` 보장
+- `dbdefault.value` → `String`으로 통일
+
+**의존성:** Jackson Module Kotlin만 사용 (Spring BOM에서 버전 관리)
 
 ### 코딩 스타일 결정
 
