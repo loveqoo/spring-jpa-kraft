@@ -13,7 +13,7 @@
 | `module-mvc` | Spring MVC (FormResolver, Service, Controller, Delegator 계층) | [docs/module-mvc.md](docs/module-mvc.md) |
 | `module-ksp-annotations` | KSP 어노테이션 (`@KraftAggregate`, `@KraftExpose`). 순수 Kotlin | [docs/module-ksp.md](docs/module-ksp.md) |
 | `module-ksp-processor` | KSP 프로세서. 타입 안전 ID + InternalMediator 코드 생성 | [docs/module-ksp.md](docs/module-ksp.md) |
-| `module-ddl-parser` | ANTLR4 MySQL DDL 파서 + Entity 코드 생성 | [docs/module-ddl-parser.md](docs/module-ddl-parser.md) |
+| `module-entity-gen` | ANTLR4 MySQL DDL 파서 + Entity 코드 생성 | [docs/module-entity-gen.md](docs/module-entity-gen.md) |
 | `buildSrc` | Gradle 빌드 설정 | — |
 
 ## 빌드
@@ -24,7 +24,7 @@
 ./gradlew :module-mvc:build
 ./gradlew :module-ksp-annotations:build
 ./gradlew :module-ksp-processor:build
-./gradlew :module-ddl-parser:build
+./gradlew :module-entity-gen:build
 ```
 
 - ktlint가 check 태스크에 포함 — 빌드 시 자동 코드 스타일 검사
