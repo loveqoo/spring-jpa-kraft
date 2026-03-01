@@ -21,5 +21,8 @@ out/
 buildSrc/.gradle/
 buildSrc/build/
 
+### ANTLR generated (use build/generated-src instead) ###
+**/src/main/gen/
+
 ### Claude Code ###
 .claude/
