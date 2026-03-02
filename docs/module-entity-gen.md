@@ -62,3 +62,45 @@ DDL 기반 코드 생성 파이프라인의 파싱 단계. MySQL DDL(`.sql`)을 
   - root 테이블 → `AggregateRootBaseEntity`, 나머지 → `BaseEntity`
   - 관계 생성: 양방향이면 `mappedBy`, 단방향이면 `@JoinColumn` 사용
   - 설정 검증: root/entity/target 테이블 존재, joinColumn 위치 검증
+  - `buildMetadataList()`: 메타데이터만 생성하는 public 메서드 — `SkeletonGenerator` 등 외부에서 재사용
+
+## 스켈레톤 코드 생성 (`SkeletonGenerator`)
+
+DDL + Aggregate Config로부터 Entity뿐 아니라 전체 계층(Repository, Form, Dto, FormResolver, Service, Controller)을 일괄 생성하는 오케스트레이터.
+
+### 생성 파일 (테이블당 8개)
+
+| 패키지 | 파일 | 역할 |
+|--------|------|------|
+| `entity/` | `{Class}.kt` | JPA Entity (기존 EntityGenerator와 동일) |
+| `repository/` | `{Class}Repository.kt` | JpaRepository + QuerydslPredicateExecutor + DynamicSearchRepository |
+| `form/` | `{Class}CreateForm.kt` | 생성용 data class (NORMAL 컬럼 + 부모 ID) |
+| `form/` | `{Class}UpdateForm.kt` | 수정용 data class (nullable 필드, `UpdateForm<ID>` 구현) |
+| `dto/` | `{Class}Dto.kt` | 읽기용 data class (`Serializable` 구현) |
+| `service/` | `{Class}FormResolver.kt` | FormResolver0~4 — forward relation 수에 따라 자동 선택 |
+| `service/` | `{Class}Service.kt` | SearchableEntityService 구현 |
+| `controller/` | `{Class}Controller.kt` | SearchableEntityController 확장 (toReadDto, toCreateDto 등) |
+
+### FormResolver 번호 자동 결정
+
+forward relation(ManyToOne + forward OneToOne) 개수에 따라:
+- 0개 → `FormResolver0` (root 엔티티)
+- 1개 → `FormResolver1` (부모 1개)
+- 2개 → `FormResolver2`, 3개 → `FormResolver3`, 4개 → `FormResolver4`
+
+### 개별 FileWriter
+
+- `RepositoryFileWriter`: Repository interface 생성
+- `FormFileWriter`: `writeCreateForm()` + `writeUpdateForm()` 두 메서드
+- `DtoFileWriter`: PK + NORMAL 컬럼 기반 DTO
+- `FormResolverFileWriter`: 부모 수에 따른 FormResolver 스켈레톤
+- `ServiceFileWriter`: SearchableEntityService 구현 클래스
+- `ControllerFileWriter`: SearchableEntityController + DTO 매핑 메서드
+
+### 사용법
+
+```kotlin
+val generator = SkeletonGenerator()
+generator.generate(schema, config, outputDir)
+// outputDir 하위에 {basePackage}/entity/, repository/, form/, dto/, service/, controller/ 생성
+```

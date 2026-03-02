@@ -7,12 +7,29 @@ data class EntityMetadata(
     val tableName: String,
     val className: String,
     val packageName: String,
+    val basePackage: String,
     val isAggregateRoot: Boolean,
     val classifiedColumns: List<ClassifiedColumn>,
     val relations: List<ResolvedRelation>,
     val reverseRelations: List<ResolvedRelation>,
     val idStrategy: IdStrategy = IdStrategy.IDENTITY,
-)
+) {
+    val idType: String
+        get() {
+            val pkColumn = classifiedColumns.firstOrNull { it.role == ColumnRole.PK }
+            return if (pkColumn != null) {
+                ColumnTypeMapper.toKotlinType(pkColumn.column.typeName, pkColumn.column.typeValue)
+            } else {
+                "Long"
+            }
+        }
+
+    val forwardRelationCount: Int
+        get() = relations.count { it.type == "ManyToOne" || it.type == "OneToOne" }
+
+    val normalColumns: List<ClassifiedColumn>
+        get() = classifiedColumns.filter { it.role == ColumnRole.NORMAL }
+}
 
 data class ResolvedRelation(
     val type: String,
@@ -21,6 +38,7 @@ data class ResolvedRelation(
     val propertyName: String,
     val mappedBy: String?,
     val nullable: Boolean,
+    val targetIdType: String = "Long",
 )
 
 class EntityFileWriter {

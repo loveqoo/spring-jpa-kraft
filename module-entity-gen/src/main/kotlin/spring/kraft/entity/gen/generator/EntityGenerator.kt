@@ -16,6 +16,20 @@ class EntityGenerator {
         config: AggregateConfig,
         outputDir: File,
     ) {
+        val metadataList = buildMetadataList(schema, config)
+
+        metadataList.forEach { metadata ->
+            val source = writer.write(metadata)
+            val packageDir = File(outputDir, metadata.packageName.replace('.', '/'))
+            packageDir.mkdirs()
+            File(packageDir, "${metadata.className}.kt").writeText(source)
+        }
+    }
+
+    fun buildMetadataList(
+        schema: TableSchema,
+        config: AggregateConfig,
+    ): List<EntityMetadata> {
         val tableMap = schema.tables.associateBy { it.name }
         validateConfig(config, tableMap)
 
@@ -24,7 +38,7 @@ class EntityGenerator {
         val relationsByTable = buildRelationsByTable(config)
         val idStrategyByTable = buildIdStrategyByTable(config)
 
-        schema.tables.forEach { table ->
+        return schema.tables.map { table ->
             val isAggregateRoot = table.name in rootTables
             val rels = relationsByTable[table.name] ?: emptyList()
 
@@ -35,25 +49,20 @@ class EntityGenerator {
             val classified = ColumnClassifier.classify(table, isAggregateRoot, joinColumns)
             val className = NameConverter.toClassName(table.name)
 
-            val forwardRelations = buildForwardRelations(forwardRels, table)
+            val forwardRelations = buildForwardRelations(forwardRels, table, tableMap)
             val reverseRelations = buildReverseRelations(reverseRels, table.name, relationsByTable)
 
-            val metadata =
-                EntityMetadata(
-                    tableName = table.name,
-                    className = className,
-                    packageName = entityPackage,
-                    isAggregateRoot = isAggregateRoot,
-                    classifiedColumns = classified,
-                    relations = forwardRelations,
-                    reverseRelations = reverseRelations,
-                    idStrategy = idStrategyByTable[table.name] ?: config.idStrategy,
-                )
-
-            val source = writer.write(metadata)
-            val packageDir = File(outputDir, entityPackage.replace('.', '/'))
-            packageDir.mkdirs()
-            File(packageDir, "$className.kt").writeText(source)
+            EntityMetadata(
+                tableName = table.name,
+                className = className,
+                packageName = entityPackage,
+                basePackage = config.basePackage,
+                isAggregateRoot = isAggregateRoot,
+                classifiedColumns = classified,
+                relations = forwardRelations,
+                reverseRelations = reverseRelations,
+                idStrategy = idStrategyByTable[table.name] ?: config.idStrategy,
+            )
         }
     }
 
@@ -165,11 +174,19 @@ class EntityGenerator {
     private fun buildForwardRelations(
         rels: List<RelationDefinition>,
         sourceTable: TableDef,
+        tableMap: Map<String, TableDef>,
     ): List<ResolvedRelation> =
         rels.map { rel ->
             val targetClassName = NameConverter.toClassName(rel.target)
             val propertyName = derivePropertyNameFromJoinColumn(rel.joinColumn)
             val joinCol = sourceTable.columns.firstOrNull { it.name == rel.joinColumn }
+            val targetPkCol = tableMap[rel.target]?.columns?.firstOrNull { it.primaryKey }
+            val targetIdType =
+                if (targetPkCol != null) {
+                    ColumnTypeMapper.toKotlinType(targetPkCol.typeName, targetPkCol.typeValue)
+                } else {
+                    "Long"
+                }
             ResolvedRelation(
                 type = rel.type.name,
                 targetClassName = targetClassName,
@@ -177,6 +194,7 @@ class EntityGenerator {
                 propertyName = propertyName,
                 mappedBy = null,
                 nullable = joinCol?.notNull?.not() ?: false,
+                targetIdType = targetIdType,
             )
         }
 
