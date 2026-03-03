@@ -104,3 +104,32 @@ val generator = SkeletonGenerator()
 generator.generate(schema, config, outputDir)
 // outputDir 하위에 {basePackage}/entity/, repository/, form/, dto/, service/, controller/ 생성
 ```
+
+## TableSchema JSON 직렬화 (`TableSchemaSerializer`)
+
+DDL 파싱 결과(`TableSchema`)를 JSON으로 내보내거나, JSON에서 복원하는 유틸리티. SPA 등 외부 도구에서 스키마 정보를 활용해 `AggregateConfig` JSON을 생성하는 워크플로우를 지원.
+
+```kotlin
+val parser = DdlParser()
+val serializer = TableSchemaSerializer()
+
+// DDL → TableSchema → JSON 파일로 내보내기
+val schema = parser.parse(File("schema.sql"))
+val json = serializer.toJson(schema)
+File("schema.json").writeText(json)
+
+// JSON → TableSchema 복원
+val restored = serializer.fromJson(File("schema.json").readText())
+```
+
+### 워크플로우 예시
+
+1. DDL 파싱 → `schema.json` 내보내기
+2. SPA에서 `schema.json` 읽어 시각적으로 Aggregate 구성 → `config.json` 생성
+3. `config.json` + `schema.json`으로 스켈레톤 코드 생성:
+
+```kotlin
+val schema = TableSchemaSerializer().fromJson(File("schema.json").readText())
+val config = AggregateConfigParser().parse(File("config.json").readText())
+SkeletonGenerator().generate(schema, config, outputDir)
+```
