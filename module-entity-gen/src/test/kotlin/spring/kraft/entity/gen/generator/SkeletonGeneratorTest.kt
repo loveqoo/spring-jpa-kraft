@@ -86,6 +86,7 @@ class SkeletonGeneratorTest {
             assertTrue(File(outputDir, "$base/form/OrderUpdateForm.kt").exists())
             assertTrue(File(outputDir, "$base/dto/OrderDto.kt").exists())
             assertTrue(File(outputDir, "$base/service/OrderFormResolver.kt").exists())
+            assertTrue(File(outputDir, "$base/service/OrderSearchFields.kt").exists())
             assertTrue(File(outputDir, "$base/service/OrderService.kt").exists())
             assertTrue(File(outputDir, "$base/controller/OrderController.kt").exists())
 
@@ -95,6 +96,7 @@ class SkeletonGeneratorTest {
             assertTrue(File(outputDir, "$base/form/OrderItemUpdateForm.kt").exists())
             assertTrue(File(outputDir, "$base/dto/OrderItemDto.kt").exists())
             assertTrue(File(outputDir, "$base/service/OrderItemFormResolver.kt").exists())
+            assertTrue(File(outputDir, "$base/service/OrderItemSearchFields.kt").exists())
             assertTrue(File(outputDir, "$base/service/OrderItemService.kt").exists())
             assertTrue(File(outputDir, "$base/controller/OrderItemController.kt").exists())
 
@@ -115,8 +117,7 @@ class SkeletonGeneratorTest {
             assertContains(source, "package com.example.order.repository")
             assertContains(source, "import com.example.order.entity.Order")
             assertContains(source, "JpaRepository<Order, Long>")
-            assertContains(source, "QuerydslPredicateExecutor<Order>")
-            assertContains(source, "DynamicSearchRepository<Long, Order>")
+            assertContains(source, "JpaSpecificationExecutor<Order>")
         } finally {
             outputDir.deleteRecursively()
         }
@@ -241,8 +242,28 @@ class SkeletonGeneratorTest {
             assertContains(source, "class OrderService(")
             assertContains(source, "override val repo: OrderRepository")
             assertContains(source, "override val formResolver: FormResolver<Long, Order, OrderCreateForm, OrderUpdateForm>")
+            assertContains(source, "override val searchFieldProvider: SearchFieldProvider<Order>")
             assertContains(source, ": SearchableEntityService<Long, Order, OrderRepository, OrderCreateForm, OrderUpdateForm>")
             assertContains(source, "override val tableName: String = \"orders\"")
+        } finally {
+            outputDir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `SearchFieldProvider binds String to LIKE and temporal to BETWEEN`() {
+        val outputDir = createTempDir()
+        try {
+            generate(baseSql, configJson, outputDir)
+            val source = readFile(outputDir, "com/example/order/service/OrderSearchFields.kt")
+
+            assertContains(source, "@Component")
+            assertContains(source, "class OrderSearchFields : SearchFieldProvider<Order>")
+            assertContains(source, "binder.bind(\"name\").to(SearchOp.LIKE)")
+            assertContains(source, "binder.bind(\"status\").to(SearchOp.LIKE)")
+            assertContains(source, "binder.bind(\"createdAt\").to(SearchOp.BETWEEN)")
+            assertContains(source, "binder.bind(\"updatedAt\").to(SearchOp.BETWEEN)")
+            assertContains(source, "override fun defaultSort(): Sort = Sort.by(Sort.Direction.DESC, \"createdAt\")")
         } finally {
             outputDir.deleteRecursively()
         }

@@ -167,7 +167,7 @@ Services are defined as **interfaces with default methods**. Implementors only n
 ```
 ReadOnlyService<ID, E>                          (findById, getOne, findAll, ...)
 └── BaseEntityService<ID, E, CF, UF>            (create, update, delete via FormResolver)
-    ├── SearchableEntityService<..., R>          (QueryDSL + DynamicSearch)
+    ├── SearchableEntityService<..., R>          (JPA Specification search)
     ├── RevisionEntityService<..., R>            (Envers revision history)
     └── SearchableRevisionEntityService<..., R>  (Searchable + Revision combined)
 
@@ -211,12 +211,12 @@ Both hooks run **inside** the `@Transactional` method, guaranteeing atomicity wi
 
 ### SearchableEntityService
 
-Requires `repo` to implement `QuerydslPredicateExecutor` and `DynamicSearchRepository`.
+Requires `repo` to implement `JpaSpecificationExecutor`. Inject `SearchFieldProvider<E>` for per-entity search configuration.
 
 | Method | Description |
 |---|---|
-| `search(predicate, pageable)` | QueryDSL predicate-based search |
-| `searchCustom(params, pageable)` | Dynamic search via `Map<String, String>` |
+| `search(params, pageable)` | `Map<String, List<String>>` → `Specification` via `SearchSpecBuilder` |
+| `search(spec, pageable)` | Direct `Specification<E>?` for programmatic use |
 
 ### RevisionEntityService
 
@@ -308,7 +308,7 @@ Controller (URL mapping + Mapper impl)
 ```
 ReadOnlyEntityController<ID, E, S, D>                   (list, getOne)
 └── BaseEntityController<..., CF, UF>                    (createOne, updateOne, delete)
-    ├── SearchableEntityController<..., R>               (QueryDSL + DynamicSearch)
+    ├── SearchableEntityController<..., R>               (JPA Specification search)
     ├── RevisionEntityController<..., R>                 (Envers revision history)
     └── SearchableRevisionEntityController<..., R>       (Searchable + Revision combined)
 ```

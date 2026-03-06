@@ -84,19 +84,20 @@ Repositories are provided to match entity type interfaces.
 
 | Repository | Paired Interface | Purpose |
 |---|---|---|
-| `DynamicSearchRepository<ID, T>` | -- | Dynamic search via `Map<String, String>` |
 | `SiblingsAwareRepository<E, P_ID>` | `ParentIdAware` | Query sibling entities sharing the same parent |
 
-### QueryDSL Helper
+### Search (`spring.kraft.jpa.search`)
 
-```kotlin
-fun <ID : Comparable<ID>, T : Identifiable<ID>> JPQLQuery<T>.fetchPage(
-    querydsl: Querydsl,
-    pageable: Pageable,
-): Page<T>
-```
+JPA `Specification`-based search with `@QuerydslPredicate`-compatible conventions (default EQ, multi-value IN, per-field customization).
 
-Executes the count query before applying pagination to guarantee an accurate total count.
+| Class | Purpose |
+|---|---|
+| `SearchOp` | Search operators: `EQ`, `LIKE`, `GTE`, `LTE`, `BETWEEN`, `IS_NULL` |
+| `SearchBinder<E>` | DSL for per-field operator binding |
+| `SearchFieldProvider<E>` | Entity-specific search config: `customize(binder)` + `defaultSort()` |
+| `SearchSpecBuilder` | `Map<String, List<String>>` + provider → `Specification<E>?` |
+
+**BETWEEN convention** (date/time fields): Pass the same parameter name twice — `?createdAt=<from>&createdAt=<to>`. If only one value is provided, the condition is silently ignored.
 
 ## EntityHelper
 

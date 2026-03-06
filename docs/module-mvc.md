@@ -34,9 +34,9 @@
   - `afterSave(entity)` / `beforeDelete(id)`: lifecycle hook — `AggregateRootAware` 엔티티면 `aggregateRootAwareServices`에 `publishEvent` 호출. `@Transactional` 메서드 내부에서 실행되어 트랜잭션 원자성 보장
   - `aggregateRootAwareServices`: `List<AggregateRootAwareService<*, *, *>>` (기본값 `emptyList()`) — 구현 클래스에서 주입하면 자동 연동
   - Result 파이프라인 결과를 `getOrThrow()`로 언래핑 — 실패 시 예외 전파
-- `SearchableEntityService<ID, E, R, CF, UF>`: `BaseEntityService` 확장. `R`이 `QuerydslPredicateExecutor` + `DynamicSearchRepository` 구현 필요
-  - `search(predicate, pageable)`: QueryDSL Predicate 기반 검색
-  - `searchCustom(params, pageable)`: `Map<String, String>` 기반 동적 검색
+- `SearchableEntityService<ID, E, R, CF, UF>`: `BaseEntityService` 확장. `R`이 `JpaSpecificationExecutor` 구현 필요. `searchFieldProvider: SearchFieldProvider<E>` 주입
+  - `search(params, pageable)`: `Map<String, List<String>>` → `SearchSpecBuilder`로 `Specification` 생성 → `repo.findAll(spec, pageable)`. sort 없으면 `searchFieldProvider.defaultSort()` 적용
+  - `search(spec, pageable)`: `Specification<E>?` 직접 전달 가능 (프로그래밍 방식)
 - `RevisionEntityService<ID, E, R, CF, UF>`: `BaseEntityService` 확장. `R`이 `RevisionRepository` 구현 필요
   - `findRevisions(id)`: Envers 리비전 목록 조회
   - `findRevisionPages(id, pageable)`: 페이징된 리비전 조회
@@ -63,13 +63,13 @@
 - **Controller**: URL 매핑만 담당, 모든 호출을 delegator에 위임. 자신이 Mapper를 구현하여 delegator에 `this`로 전달
   - `ReadOnlyEntityController<ID, E, S, D>`: 읽기 전용. `list(pageable)`, `getOne(id)`. `ReadOnlyMapper` 구현
   - `BaseEntityController<ID, E, S, D, CF, UF>`: CRUD. `createOne`, `updateOne`, `delete` 추가. `BaseEntityMapper` 구현
-  - `SearchableEntityController<..., R>`: QueryDSL/동적 검색 추가
+  - `SearchableEntityController<..., R>`: Specification 기반 검색. `search(pageable, params)` — `Map<String, List<String>>`을 `SearchSpecBuilder`로 변환
   - `RevisionEntityController<..., R>`: Envers 리비전 조회 추가. `RevisionEntityMapper` 구현
   - `SearchableRevisionEntityController<..., R>`: Searchable + Revision 결합
 - **Delegator**: 실제 로직 담당 — mapper를 통한 DTO 변환, Errors 검증, service 호출
   - `ReadOnlyDelegator`: service에 `mapper::toReadDto` transformer 전달하여 Page/단건 DTO 변환
   - `BaseEntityDelegator`: `Errors.hasErrors()` 검사 → `ValidationException` throw, `mapper.toCreateDto/toUpdateDto/toDeleteDto` 반환
-  - `SearchableEntityDelegator`: predicate null 시 `findAll` fallback, customParams 지원
+  - `SearchableEntityDelegator`: params 기반 검색을 service에 위임
   - `RevisionEntityDelegator`: `mapper::toRevisionDto` transformer 전달
   - `SearchableRevisionEntityDelegator`: Searchable + Revision 결합
 - **예외 처리** (`spring.kraft.controller.exception`):

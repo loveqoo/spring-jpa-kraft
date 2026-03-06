@@ -1,6 +1,5 @@
 package spring.kraft.controller.delegator
 
-import com.querydsl.core.types.Predicate
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
@@ -11,10 +10,9 @@ import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.history.Revisions
 import org.springframework.data.jpa.repository.JpaRepository
-import org.springframework.data.querydsl.QuerydslPredicateExecutor
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor
 import org.springframework.data.repository.history.RevisionRepository
 import spring.kraft.controller.delegator.fixture.TestRevisionEntityMapper
-import spring.kraft.jpa.repo.DynamicSearchRepository
 import spring.kraft.service.SearchableRevisionEntityService
 import spring.kraft.service.fixture.ServiceCreateForm
 import spring.kraft.service.fixture.ServiceUpdateForm
@@ -23,8 +21,7 @@ import spring.kraft.service.fixture.TestServiceEntity
 class SearchableRevisionEntityDelegatorTest {
     private interface TestFullRepo :
         JpaRepository<TestServiceEntity, Long>,
-        QuerydslPredicateExecutor<TestServiceEntity>,
-        DynamicSearchRepository<Long, TestServiceEntity>,
+        JpaSpecificationExecutor<TestServiceEntity>,
         RevisionRepository<TestServiceEntity, Long, Int>
 
     private interface TestFullService :
@@ -44,15 +41,15 @@ class SearchableRevisionEntityDelegatorTest {
         >(mockService, mockMapper)
 
     @Test
-    fun `search - predicate 기반 검색 동작`() {
+    fun `search - params 기반 검색 동작`() {
         val pageable = PageRequest.of(0, 10)
-        val predicate: Predicate = mock()
+        val params = mapOf("name" to listOf("test"))
         val mappedPage = PageImpl(listOf("dto-test"), pageable, 1)
         whenever(
-            mockService.search(eq(predicate), eq(pageable), any<(TestServiceEntity) -> String>()),
+            mockService.search(eq(params), eq(pageable), any<(TestServiceEntity) -> String>()),
         ).thenReturn(mappedPage)
 
-        val result = delegator.search(pageable, predicate)
+        val result = delegator.search(pageable, params)
 
         assertEquals(1, result.totalElements)
         assertEquals("dto-test", result.content[0])

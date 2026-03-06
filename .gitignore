@@ -24,5 +24,9 @@ buildSrc/build/
 ### ANTLR generated (use build/generated-src instead) ###
 **/src/main/gen/
 
+### Node.js ###
+node_modules/
+dist/
+
 ### Claude Code ###
 .claude/

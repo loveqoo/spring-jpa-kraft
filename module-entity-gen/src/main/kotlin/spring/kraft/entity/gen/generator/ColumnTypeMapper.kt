@@ -1,6 +1,9 @@
 package spring.kraft.entity.gen.generator
 
 object ColumnTypeMapper {
+    val STRING_TYPES = setOf("varchar", "char", "text", "mediumtext", "longtext", "json")
+    val TEMPORAL_TYPES = setOf("timestamp", "datetime", "date", "time")
+
     fun toKotlinType(
         typeName: String,
         typeValue: Int? = null,
@@ -12,7 +15,7 @@ object ColumnTypeMapper {
             lower == "smallint" -> "Short"
             lower == "tinyint" && typeValue == 1 -> "Boolean"
             lower == "tinyint" -> "Byte"
-            lower in setOf("varchar", "char", "text", "mediumtext", "longtext", "json") -> "String"
+            lower in STRING_TYPES -> "String"
             lower in setOf("boolean", "bool") -> "Boolean"
             lower in setOf("timestamp", "datetime") -> "LocalDateTime"
             lower == "date" -> "LocalDate"

@@ -5,14 +5,13 @@ import org.springframework.data.domain.Pageable
 import org.springframework.data.history.Revision
 import org.springframework.data.history.Revisions
 import org.springframework.data.jpa.repository.JpaRepository
-import org.springframework.data.querydsl.QuerydslPredicateExecutor
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor
 import org.springframework.data.repository.history.RevisionRepository
 import spring.kraft.controller.action.SearchableRevisionEntityAction
 import spring.kraft.controller.delegator.SearchableRevisionEntityDelegator
 import spring.kraft.controller.mapper.RevisionEntityMapper
 import spring.kraft.form.UpdateForm
 import spring.kraft.jpa.BaseEntity
-import spring.kraft.jpa.repo.DynamicSearchRepository
 import spring.kraft.service.SearchableRevisionEntityService
 import java.io.Serializable
 
@@ -23,8 +22,7 @@ abstract class SearchableRevisionEntityController<ID, E, R, S, D, CF, UF> :
     where ID : Comparable<ID>,
           E : BaseEntity<ID>,
           R : JpaRepository<E, ID>,
-          R : QuerydslPredicateExecutor<E>,
-          R : DynamicSearchRepository<ID, E>,
+          R : JpaSpecificationExecutor<E>,
           R : RevisionRepository<E, ID, Int>,
           S : SearchableRevisionEntityService<ID, E, R, CF, UF>,
           D : Serializable,

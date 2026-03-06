@@ -1,6 +1,5 @@
 package spring.kraft.controller.action
 
-import com.querydsl.core.types.Predicate
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import spring.kraft.form.UpdateForm
@@ -16,11 +15,6 @@ interface SearchableEntityAction<ID, E, D, CF, UF> :
           D : Serializable {
     fun search(
         pageable: Pageable,
-        predicate: Predicate?,
-    ): Page<D>
-
-    fun search(
-        pageable: Pageable,
-        customParams: Map<String, String>,
+        params: Map<String, List<String>>,
     ): Page<D>
 }

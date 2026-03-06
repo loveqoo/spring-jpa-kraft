@@ -12,6 +12,7 @@ class SkeletonGenerator {
     private val dtoFileWriter = DtoFileWriter()
     private val formResolverFileWriter = FormResolverFileWriter()
     private val serviceFileWriter = ServiceFileWriter()
+    private val searchFieldProviderFileWriter = SearchFieldProviderFileWriter()
     private val controllerFileWriter = ControllerFileWriter()
 
     fun generate(
@@ -39,6 +40,9 @@ class SkeletonGenerator {
             }
             writeFile(outputDir, "${metadata.basePackage}.service", "${metadata.className}FormResolver.kt") {
                 formResolverFileWriter.write(metadata)
+            }
+            writeFile(outputDir, "${metadata.basePackage}.service", "${metadata.className}SearchFields.kt") {
+                searchFieldProviderFileWriter.write(metadata)
             }
             writeFile(outputDir, "${metadata.basePackage}.service", "${metadata.className}Service.kt") {
                 serviceFileWriter.write(metadata)
