@@ -14,9 +14,18 @@ subprojects {
 	val libs = rootProject.libs
 	apply(plugin = libs.plugins.kotlin.jvm.pluginId)
 	apply(plugin = libs.plugins.spring.dependency.management.pluginId)
+	apply(plugin = "maven-publish")
 
-	group = "spring.jpa.kraft"
+	group = "io.github.loveqoo"
 	version = "0.0.1-SNAPSHOT"
+
+	configure<PublishingExtension> {
+		publications {
+			create<MavenPublication>("mavenJava") {
+				from(components["java"])
+			}
+		}
+	}
 
 	repositories {
 		mavenCentral()
