@@ -1,0 +1,16 @@
+{
+  "tables": [
+    {
+      "name": "users",
+      "schema": null,
+      "columns": [
+        { "name": "id", "typeName": "BIGINT", "typeValue": null, "primaryKey": true, "notNull": true, "unique": false, "autoIncrement": true, "defaultValue": null, "note": null },
+        { "name": "username", "typeName": "VARCHAR", "typeValue": 100, "primaryKey": false, "notNull": true, "unique": true, "autoIncrement": false, "defaultValue": null, "note": null },
+        { "name": "email", "typeName": "VARCHAR", "typeValue": 255, "primaryKey": false, "notNull": true, "unique": true, "autoIncrement": false, "defaultValue": null, "note": null }
+      ],
+      "indexes": [
+        { "name": "idx_username", "columns": ["username"], "unique": true, "primaryKey": false }
+      ]
+    }
+  ]
+}

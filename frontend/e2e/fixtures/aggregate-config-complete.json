@@ -1,0 +1,72 @@
+{
+  "basePackage": "com.example.order",
+  "idStrategy": "IDENTITY",
+  "aggregates": [
+    {
+      "root": "orders",
+      "relations": [
+        { "type": "OneToMany", "target": "order_items", "joinColumn": "order_id" },
+        { "type": "OneToMany", "target": "payments", "joinColumn": "order_id" }
+      ],
+      "entities": [
+        {
+          "table": "order_items",
+          "relations": [
+            { "type": "ManyToOne", "target": "orders", "joinColumn": "order_id" }
+          ],
+          "idStrategy": null
+        },
+        {
+          "table": "payments",
+          "relations": [
+            { "type": "ManyToOne", "target": "orders", "joinColumn": "order_id" }
+          ],
+          "idStrategy": null
+        }
+      ],
+      "idStrategy": null
+    }
+  ],
+  "tableSchema": {
+    "tables": [
+      {
+        "name": "orders",
+        "schema": null,
+        "columns": [
+          { "name": "id", "typeName": "BIGINT", "typeValue": null, "primaryKey": true, "notNull": true, "unique": false, "autoIncrement": true, "defaultValue": null, "note": null },
+          { "name": "customer_name", "typeName": "VARCHAR", "typeValue": 255, "primaryKey": false, "notNull": true, "unique": false, "autoIncrement": false, "defaultValue": null, "note": null },
+          { "name": "total_amount", "typeName": "DECIMAL", "typeValue": 10, "primaryKey": false, "notNull": true, "unique": false, "autoIncrement": false, "defaultValue": "0", "note": null },
+          { "name": "status", "typeName": "VARCHAR", "typeValue": 50, "primaryKey": false, "notNull": true, "unique": false, "autoIncrement": false, "defaultValue": "'PENDING'", "note": null }
+        ],
+        "indexes": []
+      },
+      {
+        "name": "order_items",
+        "schema": null,
+        "columns": [
+          { "name": "id", "typeName": "BIGINT", "typeValue": null, "primaryKey": true, "notNull": true, "unique": false, "autoIncrement": true, "defaultValue": null, "note": null },
+          { "name": "order_id", "typeName": "BIGINT", "typeValue": null, "primaryKey": false, "notNull": true, "unique": false, "autoIncrement": false, "defaultValue": null, "note": null },
+          { "name": "product_name", "typeName": "VARCHAR", "typeValue": 255, "primaryKey": false, "notNull": true, "unique": false, "autoIncrement": false, "defaultValue": null, "note": null },
+          { "name": "quantity", "typeName": "INT", "typeValue": null, "primaryKey": false, "notNull": true, "unique": false, "autoIncrement": false, "defaultValue": "1", "note": null },
+          { "name": "price", "typeName": "DECIMAL", "typeValue": 10, "primaryKey": false, "notNull": true, "unique": false, "autoIncrement": false, "defaultValue": null, "note": null }
+        ],
+        "indexes": [
+          { "name": "idx_order_id", "columns": ["order_id"], "unique": false, "primaryKey": false }
+        ]
+      },
+      {
+        "name": "payments",
+        "schema": null,
+        "columns": [
+          { "name": "id", "typeName": "BIGINT", "typeValue": null, "primaryKey": true, "notNull": true, "unique": false, "autoIncrement": true, "defaultValue": null, "note": null },
+          { "name": "order_id", "typeName": "BIGINT", "typeValue": null, "primaryKey": false, "notNull": true, "unique": false, "autoIncrement": false, "defaultValue": null, "note": null },
+          { "name": "amount", "typeName": "DECIMAL", "typeValue": 10, "primaryKey": false, "notNull": true, "unique": false, "autoIncrement": false, "defaultValue": null, "note": null },
+          { "name": "method", "typeName": "VARCHAR", "typeValue": 50, "primaryKey": false, "notNull": true, "unique": false, "autoIncrement": false, "defaultValue": null, "note": null }
+        ],
+        "indexes": [
+          { "name": "idx_payment_order_id", "columns": ["order_id"], "unique": false, "primaryKey": false }
+        ]
+      }
+    ]
+  }
+}

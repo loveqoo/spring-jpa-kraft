@@ -1,0 +1,13 @@
+{
+  "tables": [
+    {
+      "name": "audit_logs",
+      "schema": null,
+      "columns": [
+        { "name": "action", "typeName": "VARCHAR", "typeValue": 100, "primaryKey": false, "notNull": true, "unique": false, "autoIncrement": false, "defaultValue": null, "note": null },
+        { "name": "timestamp", "typeName": "DATETIME", "typeValue": null, "primaryKey": false, "notNull": true, "unique": false, "autoIncrement": false, "defaultValue": null, "note": null }
+      ],
+      "indexes": []
+    }
+  ]
+}
