@@ -16,6 +16,7 @@ import { useResponsive } from '../hooks/useResponsive';
 import { ID_STRATEGIES, COLUMN_TYPES, TYPES_WITH_SIZE, ENGINES, CHARSETS } from '../types/aggregateConfig';
 import type { IdStrategy } from '../types/aggregateConfig';
 import type { TableColumn, TableIndex } from '../types/tableSchema';
+import { AUDIT_COLUMN_NAMES } from '../types/tableSchema';
 
 const ID_STRATEGY_OPTIONS = ID_STRATEGIES.map((s) => ({ label: s, value: s }));
 const COLUMN_TYPE_OPTIONS = COLUMN_TYPES.map((ct) => ({ label: ct, value: ct }));
@@ -70,13 +71,8 @@ export default function DesignerToolbar({
   const hiddenCount = hiddenColumns.length;
   const defaultColumnNames = defaultColumns.filter((c) => c.name.trim()).map((c) => c.name);
 
-  const handleAddPreset = () => {
-    const merged = Array.from(new Set([...hiddenColumns, ...defaultColumnNames]));
-    onHiddenColumnsChange(merged);
-  };
-
-  const handleRemove = (col: string) => {
-    onHiddenColumnsChange(hiddenColumns.filter((c) => c !== col));
+  const addToHidden = (names: Iterable<string>) => {
+    onHiddenColumnsChange(Array.from(new Set([...hiddenColumns, ...names])));
   };
 
   const hiddenColumnsContent = (
@@ -96,22 +92,21 @@ export default function DesignerToolbar({
         notFoundContent={null}
       />
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
-        {hiddenColumns.map((col) => (
-          <Tag key={col} closable onClose={() => handleRemove(col)} style={{ fontSize: 11 }}>
-            {col}
-          </Tag>
-        ))}
-      </div>
-
       <Divider style={{ margin: '8px 0' }} />
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Button size="small" type="link" onClick={handleAddPreset} style={{ padding: 0, fontSize: 12 }}>
-          {t('toolbar.addDefaultColumns')}
-        </Button>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Button size="small" type="link" onClick={() => addToHidden(AUDIT_COLUMN_NAMES)} style={{ padding: 0, fontSize: 12 }}>
+            {t('toolbar.hideAuditColumns')}
+          </Button>
+          {defaultColumnNames.length > 0 && (
+            <Button size="small" type="link" onClick={() => addToHidden(defaultColumnNames)} style={{ padding: 0, fontSize: 12 }}>
+              {t('toolbar.addDefaultColumns')}
+            </Button>
+          )}
+        </div>
         {hiddenCount > 0 && (
-          <Button size="small" type="link" danger onClick={() => onHiddenColumnsChange([])} style={{ padding: 0, fontSize: 12 }}>
+          <Button size="small" type="link" danger onClick={() => onHiddenColumnsChange([])} style={{ padding: 0, fontSize: 12, alignSelf: 'flex-end' }}>
             {t('toolbar.clearAll')}
           </Button>
         )}

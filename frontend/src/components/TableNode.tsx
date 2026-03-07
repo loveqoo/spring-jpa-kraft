@@ -2,8 +2,9 @@ import { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import { Tag } from 'antd';
-import { KeyOutlined, CrownOutlined, CloseOutlined, NodeIndexOutlined } from '@ant-design/icons';
+import { KeyOutlined, CrownOutlined, CloseOutlined, NodeIndexOutlined, AuditOutlined } from '@ant-design/icons';
 import type { TableDef, TableColumn } from '../types/tableSchema';
+import { AUDIT_COLUMN_NAMES } from '../types/tableSchema';
 
 interface AggregateColor {
   border: string;
@@ -28,7 +29,8 @@ function TableNode({ data }: NodeProps) {
   const { table, isRoot, aggregateColor, onRemoveFromAggregate, hiddenColumns } = data as TableNodeData;
   const hidden = new Set(hiddenColumns ?? []);
   const pkColumns = table.columns.filter((c: TableColumn) => c.primaryKey && !hidden.has(c.name));
-  const regularColumns = table.columns.filter((c: TableColumn) => !c.primaryKey && !hidden.has(c.name));
+  const regularColumns = table.columns.filter((c: TableColumn) => !c.primaryKey && !AUDIT_COLUMN_NAMES.has(c.name) && !hidden.has(c.name));
+  const auditColumns = table.columns.filter((c: TableColumn) => !c.primaryKey && AUDIT_COLUMN_NAMES.has(c.name) && !hidden.has(c.name));
   const indexedColumns = new Set(table.indexes?.flatMap((idx) => idx.columns) ?? []);
 
   const borderColor = isRoot
@@ -178,6 +180,22 @@ function TableNode({ data }: NodeProps) {
             <Tag style={{ fontSize: 11, marginLeft: 'auto', lineHeight: '16px' }}>{formatType(col)}</Tag>
           </div>
         ))}
+
+        {auditColumns.length > 0 && (
+          <>
+            <div style={{ borderTop: '1px dashed #e8e8e8', margin: '2px 12px' }} />
+            {auditColumns.map((col: TableColumn) => (
+              <div
+                key={col.name}
+                style={{ padding: '3px 12px', display: 'flex', alignItems: 'center', gap: 6, color: '#b0b0b0' }}
+              >
+                <AuditOutlined style={{ fontSize: 11, width: 11 }} />
+                <span>{col.name}</span>
+                <Tag style={{ fontSize: 11, marginLeft: 'auto', lineHeight: '16px', color: '#b0b0b0' }}>{formatType(col)}</Tag>
+              </div>
+            ))}
+          </>
+        )}
       </div>
     </div>
   );

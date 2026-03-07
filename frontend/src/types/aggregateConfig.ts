@@ -19,6 +19,12 @@ export const CHARSETS = ['utf8mb4', 'utf8', 'latin1', 'ascii', 'binary'] as cons
 
 export type RelationType = 'OneToOne' | 'OneToMany' | 'ManyToOne';
 
+export const INVERSE_RELATION: Record<RelationType, RelationType> = {
+  OneToMany: 'ManyToOne',
+  ManyToOne: 'OneToMany',
+  OneToOne: 'OneToOne',
+};
+
 export interface RelationDefinition {
   type: RelationType;
   target: string;

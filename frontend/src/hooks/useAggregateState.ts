@@ -1,8 +1,10 @@
 import { useReducer, useCallback } from 'react';
 import { applyNodeChanges, applyEdgeChanges } from '@xyflow/react';
 import type { Edge, Node, NodeChange, EdgeChange, OnNodesChange, OnEdgesChange, Connection } from '@xyflow/react';
+import { INVERSE_RELATION } from '../types/aggregateConfig';
 import type { IdStrategy, RelationType } from '../types/aggregateConfig';
 import type { TableSchema, TableColumn, TableIndex, TableDef } from '../types/tableSchema';
+import { AUDIT_COLUMNS, AUDIT_COLUMN_NAMES, makeIdColumn, makeFkColumn, makeFkIndex } from '../types/tableSchema';
 import type { PendingConnection } from '../components/ConnectionModal';
 import type { InitialOverrides } from '../utils/configImporter';
 import { layoutNodes } from '../utils/layoutEngine';
@@ -18,12 +20,6 @@ export const AGGREGATE_COLORS = [
   { border: '#eb2f96', bg: '#fff0f6', headerBg: '#ffadd2', label: 'Pink' },
   { border: '#13c2c2', bg: '#e6fffb', headerBg: '#87e8de', label: 'Cyan' },
 ];
-
-const INVERSE: Record<RelationType, RelationType> = {
-  OneToMany: 'ManyToOne',
-  ManyToOne: 'OneToMany',
-  OneToOne: 'OneToOne',
-};
 
 export interface DesignerState {
   schema: TableSchema;
@@ -151,20 +147,10 @@ function ensureFkColumnAndIndex(
 
     // Add column if missing — insert before default (audit) columns
     if (!columns.some((c) => c.name === joinColumn)) {
-      const fkCol: TableColumn = {
-        name: joinColumn,
-        typeName: 'BIGINT',
-        typeValue: null,
-        primaryKey: false,
-        notNull: true,
-        unique: false,
-        autoIncrement: false,
-        defaultValue: null,
-        note: null,
-      };
-      const firstDefaultIdx = columns.findIndex((c) => defaultColumnNames.has(c.name));
-      if (firstDefaultIdx >= 0) {
-        columns = [...columns.slice(0, firstDefaultIdx), fkCol, ...columns.slice(firstDefaultIdx)];
+      const fkCol = makeFkColumn(joinColumn);
+      const firstReservedIdx = columns.findIndex((c) => defaultColumnNames.has(c.name) || AUDIT_COLUMN_NAMES.has(c.name));
+      if (firstReservedIdx >= 0) {
+        columns = [...columns.slice(0, firstReservedIdx), fkCol, ...columns.slice(firstReservedIdx)];
       } else {
         columns = [...columns, fkCol];
       }
@@ -173,15 +159,7 @@ function ensureFkColumnAndIndex(
 
     // Add index if missing
     if (!indexes.some((idx) => idx.columns.includes(joinColumn))) {
-      indexes = [
-        ...indexes,
-        {
-          name: `idx_${joinColumn}`,
-          columns: [joinColumn],
-          unique: false,
-          primaryKey: false,
-        },
-      ];
+      indexes = [...indexes, makeFkIndex(joinColumn)];
       modified = true;
     }
 
@@ -265,7 +243,7 @@ function reducer(state: DesignerState, action: Action): DesignerState {
         ...state,
         edges: updateEdgeData(state.edges, action.edgeId, {
           sourceRelationType: action.relationType,
-          targetRelationType: INVERSE[action.relationType],
+          targetRelationType: INVERSE_RELATION[action.relationType],
         }),
       };
     case 'SET_EDGE_TARGET_RELATION':
@@ -273,7 +251,7 @@ function reducer(state: DesignerState, action: Action): DesignerState {
         ...state,
         edges: updateEdgeData(state.edges, action.edgeId, {
           targetRelationType: action.relationType,
-          sourceRelationType: INVERSE[action.relationType],
+          sourceRelationType: INVERSE_RELATION[action.relationType],
         }),
       };
     case 'SET_EDGE_JOIN_COLUMN':
@@ -343,21 +321,10 @@ function reducer(state: DesignerState, action: Action): DesignerState {
     case 'SET_DEFAULT_INDEXES':
       return { ...state, defaultIndexes: action.indexes };
     case 'ADD_TABLE': {
-      const idColumn: TableColumn = {
-        name: 'id',
-        typeName: 'BIGINT',
-        typeValue: null,
-        primaryKey: true,
-        notNull: true,
-        unique: false,
-        autoIncrement: true,
-        defaultValue: null,
-        note: null,
-      };
       const newTable = {
         name: action.tableName,
         schema: null,
-        columns: [idColumn, ...state.defaultColumns.filter((c) => c.name.trim()).map((c) => ({ ...c }))],
+        columns: [makeIdColumn(), ...state.defaultColumns.filter((c) => c.name.trim()).map((c) => ({ ...c })), ...AUDIT_COLUMNS.map((c) => ({ ...c }))],
         indexes: state.defaultIndexes.filter((idx) => idx.columns.length > 0).map((idx) => ({ ...idx, columns: [...idx.columns] })),
         engine: null,
         charset: null,
@@ -494,7 +461,7 @@ function reducer(state: DesignerState, action: Action): DesignerState {
           : { sourceHandle: connection.sourceHandle, targetHandle: connection.targetHandle };
 
       const sourceRel = relationType;
-      const targetRel = INVERSE[relationType];
+      const targetRel = INVERSE_RELATION[relationType];
 
       const newEdge: Edge = {
         id: `edge-${connection.source}-${connection.target}-${Date.now()}`,

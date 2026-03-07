@@ -19,6 +19,10 @@ subprojects {
 	group = "io.github.loveqoo"
 	version = "0.0.1-SNAPSHOT"
 
+	configure<JavaPluginExtension> {
+		withSourcesJar()
+	}
+
 	configure<PublishingExtension> {
 		publications {
 			create<MavenPublication>("mavenJava") {

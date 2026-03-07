@@ -4,6 +4,7 @@ import type { InputRef } from 'antd';
 import { PlusOutlined, DeleteOutlined, ArrowUpOutlined, ArrowDownOutlined, ImportOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import type { TableColumn, TableIndex } from '../types/tableSchema';
+import { AUDIT_COLUMN_NAMES } from '../types/tableSchema';
 import { COLUMN_TYPES, TYPES_WITH_SIZE } from '../types/aggregateConfig';
 
 const { Text } = Typography;
@@ -280,7 +281,9 @@ export default function TableEditorModal({
           <span />
         </div>
 
-        {cols.map((col, i) => (
+        {cols.map((col, i) => {
+          const isAudit = AUDIT_COLUMN_NAMES.has(col.name);
+          return (
           <div
             key={i}
             style={{
@@ -290,6 +293,7 @@ export default function TableEditorModal({
               padding: '4px 8px',
               borderBottom: '1px solid #f5f5f5',
               alignItems: 'center',
+              opacity: isAudit ? 0.5 : 1,
             }}
           >
             <Input
@@ -298,6 +302,7 @@ export default function TableEditorModal({
               value={col.name}
               onChange={(e) => updateCol(i, { name: e.target.value })}
               placeholder="column_name"
+              disabled={isAudit}
             />
             <Select
               size="small"
@@ -310,42 +315,45 @@ export default function TableEditorModal({
               options={COLUMN_TYPES.map((t) => ({ label: t, value: t }))}
               style={{ width: '100%' }}
               showSearch
+              disabled={isAudit}
             />
             <InputNumber
               size="small"
               value={col.typeValue}
               onChange={(v) => updateCol(i, { typeValue: v })}
               min={0}
-              disabled={!TYPES_WITH_SIZE.has(col.typeName.toUpperCase())}
+              disabled={isAudit || !TYPES_WITH_SIZE.has(col.typeName.toUpperCase())}
               style={{ width: '100%' }}
               placeholder="—"
             />
             <Checkbox
               tabIndex={0}
               checked={col.primaryKey}
-              disabled={!col.primaryKey && cols.some((c) => c.primaryKey)}
+              disabled={isAudit || (!col.primaryKey && cols.some((c) => c.primaryKey))}
               onChange={(e) => updateCol(i, { primaryKey: e.target.checked })}
             />
-            <Checkbox tabIndex={0} checked={col.notNull} onChange={(e) => updateCol(i, { notNull: e.target.checked })} />
-            <Checkbox tabIndex={0} checked={col.autoIncrement} onChange={(e) => updateCol(i, { autoIncrement: e.target.checked })} />
+            <Checkbox tabIndex={0} checked={col.notNull} onChange={(e) => updateCol(i, { notNull: e.target.checked })} disabled={isAudit} />
+            <Checkbox tabIndex={0} checked={col.autoIncrement} onChange={(e) => updateCol(i, { autoIncrement: e.target.checked })} disabled={isAudit} />
             <Input
               size="small"
               value={col.defaultValue ?? ''}
               onChange={(e) => updateCol(i, { defaultValue: e.target.value || null })}
               placeholder="—"
+              disabled={isAudit}
             />
             <Input
               size="small"
               value={col.note ?? ''}
               onChange={(e) => updateCol(i, { note: e.target.value || null })}
               placeholder="—"
+              disabled={isAudit}
             />
             <div style={{ display: 'flex', gap: 2 }}>
               <Button
                 type="text"
                 size="small"
                 icon={<ArrowUpOutlined style={{ fontSize: 10 }} />}
-                disabled={i === 0}
+                disabled={isAudit || i === 0}
                 onClick={() => moveCol(i, -1)}
                 style={{ padding: '0 4px', minWidth: 0 }}
               />
@@ -353,24 +361,25 @@ export default function TableEditorModal({
                 type="text"
                 size="small"
                 icon={<ArrowDownOutlined style={{ fontSize: 10 }} />}
-                disabled={i === cols.length - 1}
+                disabled={isAudit || i === cols.length - 1}
                 onClick={() => moveCol(i, 1)}
                 style={{ padding: '0 4px', minWidth: 0 }}
               />
-              <Tooltip title={indexedColumns.has(col.name) ? t('tableEditor.removeIndexFirst') : undefined}>
+              <Tooltip title={isAudit ? t('tableEditor.auditColumnLocked') : indexedColumns.has(col.name) ? t('tableEditor.removeIndexFirst') : undefined}>
                 <Button
                   type="text"
                   size="small"
                   danger
                   icon={<DeleteOutlined style={{ fontSize: 10 }} />}
                   onClick={() => removeCol(i)}
-                  disabled={indexedColumns.has(col.name)}
+                  disabled={isAudit || indexedColumns.has(col.name)}
                   style={{ padding: '0 4px', minWidth: 0 }}
                 />
               </Tooltip>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
@@ -378,12 +387,10 @@ export default function TableEditorModal({
           type="dashed"
           icon={<PlusOutlined />}
           onClick={() => setCols((prev) => {
-              const defaultNames = new Set(defaultColumns.map((c) => c.name));
-              const firstDefaultIdx = prev.findIndex((c) => defaultNames.has(c.name));
-              const insertIdx = firstDefaultIdx === -1 ? prev.length : firstDefaultIdx;
+              const firstAuditIdx = prev.findIndex((c) => AUDIT_COLUMN_NAMES.has(c.name));
+              const insertIdx = firstAuditIdx === -1 ? prev.length : firstAuditIdx;
               focusTargetRef.current = { type: 'col', index: insertIdx };
-              if (firstDefaultIdx === -1) return [...prev, createEmptyColumn()];
-              return [...prev.slice(0, firstDefaultIdx), createEmptyColumn(), ...prev.slice(firstDefaultIdx)];
+              return [...prev.slice(0, insertIdx), createEmptyColumn(), ...prev.slice(insertIdx)];
             })}
           style={{ flex: 1 }}
           size="small"

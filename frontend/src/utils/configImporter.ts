@@ -1,5 +1,7 @@
+import { INVERSE_RELATION } from '../types/aggregateConfig';
 import type { AggregateConfig, IdStrategy, RelationType } from '../types/aggregateConfig';
-import type { TableSchema, TableColumn, TableDef, TableIndex } from '../types/tableSchema';
+import type { TableSchema, TableColumn, TableIndex, TableDef } from '../types/tableSchema';
+import { makeIdColumn, makeFkColumn, makeFkIndex } from '../types/tableSchema';
 
 export interface InitialOverrides {
   basePackage: string;
@@ -16,49 +18,6 @@ export interface InitialOverrides {
     targetRelationType: RelationType;
     joinColumn: string;
   }>;
-}
-
-const INVERSE: Record<RelationType, RelationType> = {
-  OneToMany: 'ManyToOne',
-  ManyToOne: 'OneToMany',
-  OneToOne: 'OneToOne',
-};
-
-function makeIdColumn(): TableColumn {
-  return {
-    name: 'id',
-    typeName: 'BIGINT',
-    typeValue: null,
-    primaryKey: true,
-    notNull: true,
-    unique: false,
-    autoIncrement: true,
-    defaultValue: null,
-    note: null,
-  };
-}
-
-function makeFkColumn(name: string): TableColumn {
-  return {
-    name,
-    typeName: 'BIGINT',
-    typeValue: null,
-    primaryKey: false,
-    notNull: true,
-    unique: false,
-    autoIncrement: false,
-    defaultValue: null,
-    note: null,
-  };
-}
-
-function makeFkIndex(columnName: string): TableIndex {
-  return {
-    name: `idx_${columnName}`,
-    columns: [columnName],
-    unique: false,
-    primaryKey: false,
-  };
 }
 
 /**
@@ -185,7 +144,7 @@ function addEdgeDefinition(
     source,
     target,
     sourceRelationType,
-    targetRelationType: INVERSE[sourceRelationType],
+    targetRelationType: INVERSE_RELATION[sourceRelationType],
     joinColumn,
   });
 }
