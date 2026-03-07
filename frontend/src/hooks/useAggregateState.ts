@@ -324,7 +324,7 @@ function reducer(state: DesignerState, action: Action): DesignerState {
       const newTable = {
         name: action.tableName,
         schema: null,
-        columns: [makeIdColumn(), ...state.defaultColumns.filter((c) => c.name.trim()).map((c) => ({ ...c })), ...AUDIT_COLUMNS.map((c) => ({ ...c }))],
+        columns: [makeIdColumn(), ...state.defaultColumns.filter((c) => c.name.trim() && !AUDIT_COLUMN_NAMES.has(c.name)).map((c) => ({ ...c })), ...AUDIT_COLUMNS.map((c) => ({ ...c }))],
         indexes: state.defaultIndexes.filter((idx) => idx.columns.length > 0).map((idx) => ({ ...idx, columns: [...idx.columns] })),
         engine: null,
         charset: null,

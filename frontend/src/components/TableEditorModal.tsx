@@ -126,12 +126,13 @@ export default function TableEditorModal({
 
   const applyDefaultColumns = () => {
     setCols((prev) => {
-      const defaultMap = new Map(defaultColumns.map((c) => [c.name, { ...c }]));
-      // Overwrite existing columns that match by name
+      const safeDefaults = defaultColumns.filter((c) => !AUDIT_COLUMN_NAMES.has(c.name));
+      const defaultMap = new Map(safeDefaults.map((c) => [c.name, { ...c }]));
+      // Overwrite existing columns that match by name (skip audit columns)
       const updated = prev.map((c) => (defaultMap.has(c.name) ? { ...defaultMap.get(c.name)! } : c));
       const existingNames = new Set(prev.map((c) => c.name));
       // Append new default columns that don't exist yet
-      const appended = defaultColumns.filter((c) => !existingNames.has(c.name)).map((c) => ({ ...c }));
+      const appended = safeDefaults.filter((c) => !existingNames.has(c.name)).map((c) => ({ ...c }));
       return [...updated, ...appended];
     });
   };

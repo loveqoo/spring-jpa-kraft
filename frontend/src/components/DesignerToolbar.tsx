@@ -443,7 +443,11 @@ function DefaultColumnsEditor({
               <Input
                 size="small"
                 value={col.name}
-                onChange={(e) => updateColumn(i, { name: e.target.value })}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (AUDIT_COLUMN_NAMES.has(v)) return;
+                  updateColumn(i, { name: v });
+                }}
                 placeholder={t('toolbar.colNamePlaceholder')}
                 style={{ fontSize: 12 }}
               />
