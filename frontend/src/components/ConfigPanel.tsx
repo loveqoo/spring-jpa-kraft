@@ -9,10 +9,11 @@ import {
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
-import { ID_STRATEGIES } from '../types/aggregateConfig';
+import { ID_STRATEGIES, ENGINES, CHARSETS } from '../types/aggregateConfig';
 import type { IdStrategy, RelationType } from '../types/aggregateConfig';
 import type { TableDef } from '../types/tableSchema';
 import type { Edge } from '@xyflow/react';
+import { extractSide, SIDES } from '../utils/handlePicker';
 import type { DesignerState } from '../hooks/useAggregateState';
 import { AGGREGATE_COLORS, getRootColorIndex } from '../hooks/useAggregateState';
 import { useResponsive } from '../hooks/useResponsive';
@@ -56,7 +57,11 @@ interface Props {
   onSetEdgeJoinColumn: (edgeId: string, joinColumn: string) => void;
   onConfirmEdge: (edgeId: string) => void;
   onDeleteEdge: (edgeId: string) => void;
+  onSetEdgeHandles: (edgeId: string, sourceHandle: string, targetHandle: string) => void;
   onEditTable: (tableName: string) => void;
+  onSetTableOption: (tableName: string, key: 'engine' | 'charset' | 'comment', value: string | null) => void;
+  globalEngine: string;
+  globalCharset: string;
 }
 
 export default function ConfigPanel({
@@ -68,7 +73,11 @@ export default function ConfigPanel({
   onSetEdgeJoinColumn,
   onConfirmEdge,
   onDeleteEdge,
+  onSetEdgeHandles,
   onEditTable,
+  onSetTableOption,
+  globalEngine,
+  globalCharset,
 }: Props) {
   const { t } = useTranslation();
   const { isDesktop } = useResponsive();
@@ -96,6 +105,9 @@ export default function ConfigPanel({
           onAssignAggregate={onAssignAggregate}
           onSetIdStrategy={onSetNodeIdStrategy}
           onEditTable={onEditTable}
+          onSetTableOption={onSetTableOption}
+          globalEngine={globalEngine}
+          globalCharset={globalCharset}
         />
       )}
       {selectedEdge && (
@@ -106,6 +118,7 @@ export default function ConfigPanel({
           onSetJoinColumn={onSetEdgeJoinColumn}
           onConfirm={onConfirmEdge}
           onDelete={onDeleteEdge}
+          onSetHandles={onSetEdgeHandles}
         />
       )}
       {!selectedTable && !selectedEdge && (
@@ -160,6 +173,9 @@ function NodeConfig({
   onAssignAggregate,
   onSetIdStrategy,
   onEditTable,
+  onSetTableOption,
+  globalEngine,
+  globalCharset,
 }: {
   table: TableDef;
   state: DesignerState;
@@ -167,6 +183,9 @@ function NodeConfig({
   onAssignAggregate: (tableName: string, rootName: string | null) => void;
   onSetIdStrategy: (name: string, strategy: IdStrategy | null) => void;
   onEditTable: (tableName: string) => void;
+  onSetTableOption: (tableName: string, key: 'engine' | 'charset' | 'comment', value: string | null) => void;
+  globalEngine: string;
+  globalCharset: string;
 }) {
   const { t } = useTranslation();
   const isRoot = state.roots.has(table.name);
@@ -282,6 +301,36 @@ function NodeConfig({
         />
       </div>
 
+      {/* ENGINE */}
+      <div style={{ marginBottom: 16 }}>
+        <SectionLabel>{t('configPanel.engine')}</SectionLabel>
+        <Select
+          value={table.engine ?? 'inherit'}
+          onChange={(v) => onSetTableOption(table.name, 'engine', v === 'inherit' ? null : v)}
+          options={[
+            { label: `${t('configPanel.inheritGlobal')} (${globalEngine})`, value: 'inherit' },
+            ...ENGINES.map((e) => ({ label: e, value: e })),
+          ]}
+          style={{ width: '100%' }}
+          size="small"
+        />
+      </div>
+
+      {/* CHARSET */}
+      <div style={{ marginBottom: 16 }}>
+        <SectionLabel>{t('configPanel.charset')}</SectionLabel>
+        <Select
+          value={table.charset ?? 'inherit'}
+          onChange={(v) => onSetTableOption(table.name, 'charset', v === 'inherit' ? null : v)}
+          options={[
+            { label: `${t('configPanel.inheritGlobal')} (${globalCharset})`, value: 'inherit' },
+            ...CHARSETS.map((c) => ({ label: c, value: c })),
+          ]}
+          style={{ width: '100%' }}
+          size="small"
+        />
+      </div>
+
       <Divider style={{ margin: '14px 0' }} />
 
       {/* Edit Table */}
@@ -339,6 +388,7 @@ function EdgeConfig({
   onSetJoinColumn,
   onConfirm,
   onDelete,
+  onSetHandles,
 }: {
   edge: Edge;
   state: DesignerState;
@@ -346,6 +396,7 @@ function EdgeConfig({
   onSetJoinColumn: (edgeId: string, col: string) => void;
   onConfirm: (edgeId: string) => void;
   onDelete: (edgeId: string) => void;
+  onSetHandles: (edgeId: string, sourceHandle: string, targetHandle: string) => void;
 }) {
   const { t } = useTranslation();
   const sourceTableDef = state.schema.tables.find((tbl) => tbl.name === edge.source);
@@ -531,6 +582,45 @@ function EdgeConfig({
         </div>
         <div>
           {edge.target}: <Tag style={{ fontSize: 10, borderRadius: 4 }}>@{inverseRel(sourceRel)}</Tag>
+        </div>
+      </div>
+
+      {/* Edge Routing */}
+      <div
+        style={{
+          background: '#fafafa',
+          border: '1px solid #f0f0f0',
+          borderRadius: 8,
+          padding: 12,
+          marginBottom: 12,
+        }}
+      >
+        <SectionLabel tooltip={t('configPanel.edgeRoutingTooltip')}>
+          {t('configPanel.edgeRouting')}
+        </SectionLabel>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Text style={{ fontSize: 12, minWidth: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {edge.source}
+            </Text>
+            <Segmented
+              size="small"
+              options={SIDES.map((s) => ({ label: t(`configPanel.side${s.charAt(0).toUpperCase() + s.slice(1)}`), value: s }))}
+              value={extractSide(edge.sourceHandle)}
+              onChange={(v) => onSetHandles(edge.id, `${edge.source}-${v}-1`, edge.targetHandle ?? `${edge.target}-left-1`)}
+            />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Text style={{ fontSize: 12, minWidth: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {edge.target}
+            </Text>
+            <Segmented
+              size="small"
+              options={SIDES.map((s) => ({ label: t(`configPanel.side${s.charAt(0).toUpperCase() + s.slice(1)}`), value: s }))}
+              value={extractSide(edge.targetHandle)}
+              onChange={(v) => onSetHandles(edge.id, edge.sourceHandle ?? `${edge.source}-right-1`, `${edge.target}-${v}-1`)}
+            />
+          </div>
         </div>
       </div>
 

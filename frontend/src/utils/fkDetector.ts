@@ -44,7 +44,7 @@ export function candidatesToEdges(candidates: FkCandidate[], nodes: Node[]): Edg
     const handles =
       sourceNode && targetNode
         ? pickHandles(sourceNode, targetNode)
-        : { sourceHandle: `${c.sourceTable}-right`, targetHandle: `${c.targetTable}-left` };
+        : { sourceHandle: `${c.sourceTable}-right-1`, targetHandle: `${c.targetTable}-left-1` };
 
     return {
       id: `fk-${c.sourceTable}-${c.column}-${c.targetTable}`,

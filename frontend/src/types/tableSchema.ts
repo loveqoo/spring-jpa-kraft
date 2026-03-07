@@ -7,6 +7,9 @@ export interface TableDef {
   schema: string | null;
   columns: TableColumn[];
   indexes: TableIndex[];
+  engine: string | null;
+  charset: string | null;
+  comment: string | null;
 }
 
 export interface TableColumn {

@@ -31,6 +31,8 @@ export interface DesignerState {
   edges: Edge[];
   basePackage: string;
   globalIdStrategy: IdStrategy;
+  globalEngine: string;
+  globalCharset: string;
   roots: Set<string>;
   /** entity table name → aggregate root name */
   aggregateAssignments: Record<string, string>;
@@ -39,6 +41,8 @@ export interface DesignerState {
   hiddenColumns: string[];
   /** Default columns appended to every new table (after id) */
   defaultColumns: TableColumn[];
+  /** Default indexes appended to every new table */
+  defaultIndexes: TableIndex[];
   selectedNodeId: string | null;
   selectedEdgeId: string | null;
   pendingConnection: PendingConnection | null;
@@ -50,12 +54,17 @@ type Action =
   | { type: 'SET_NODES_WITH_EDGE_RECALC'; nodes: Node[] }
   | { type: 'SET_BASE_PACKAGE'; value: string }
   | { type: 'SET_GLOBAL_ID_STRATEGY'; value: IdStrategy }
+  | { type: 'SET_GLOBAL_ENGINE'; value: string }
+  | { type: 'SET_GLOBAL_CHARSET'; value: string }
+  | { type: 'SET_TABLE_OPTION'; tableName: string; key: 'engine' | 'charset' | 'comment'; value: string | null }
   | { type: 'TOGGLE_ROOT'; tableName: string }
   | { type: 'ASSIGN_AGGREGATE'; tableName: string; rootName: string | null }
   | { type: 'SET_NODE_ID_STRATEGY'; tableName: string; strategy: IdStrategy | null }
   | { type: 'SET_EDGE_SOURCE_RELATION'; edgeId: string; relationType: RelationType }
   | { type: 'SET_EDGE_TARGET_RELATION'; edgeId: string; relationType: RelationType }
   | { type: 'SET_EDGE_JOIN_COLUMN'; edgeId: string; joinColumn: string }
+  | { type: 'SET_EDGE_WAYPOINT'; edgeId: string; x: number | null; y: number | null }
+  | { type: 'SET_EDGE_HANDLES'; edgeId: string; sourceHandle: string; targetHandle: string }
   | { type: 'CONFIRM_EDGE'; edgeId: string }
   | { type: 'DELETE_EDGE'; edgeId: string }
   | { type: 'SELECT_NODE'; nodeId: string | null }
@@ -63,6 +72,7 @@ type Action =
   | { type: 'CLEAR_SELECTION' }
   | { type: 'SET_HIDDEN_COLUMNS'; columns: string[] }
   | { type: 'SET_DEFAULT_COLUMNS'; columns: TableColumn[] }
+  | { type: 'SET_DEFAULT_INDEXES'; indexes: TableIndex[] }
   | { type: 'ADD_TABLE'; tableName: string }
   | { type: 'RENAME_TABLE'; oldName: string; newName: string }
   | { type: 'DELETE_TABLE'; tableName: string }
@@ -198,25 +208,34 @@ function ensureFkColumnAndIndex(
 
 function reducer(state: DesignerState, action: Action): DesignerState {
   switch (action.type) {
-    case 'APPLY_NODE_CHANGES': {
-      const newNodes = applyNodeChanges(action.changes, state.nodes);
-      const hasDrag = action.changes.some((c) => c.type === 'position' && 'position' in c && c.position);
-      if (hasDrag) {
-        const updatedEdges = recalculateEdgeHandles(state.edges, newNodes);
-        return { ...state, nodes: newNodes, edges: updatedEdges as Edge[] };
-      }
-      return { ...state, nodes: newNodes };
-    }
+    case 'APPLY_NODE_CHANGES':
+      return { ...state, nodes: applyNodeChanges(action.changes, state.nodes) };
     case 'APPLY_EDGE_CHANGES':
       return { ...state, edges: applyEdgeChanges(action.changes, state.edges) };
     case 'SET_NODES_WITH_EDGE_RECALC': {
       const updatedEdges = recalculateEdgeHandles(state.edges, action.nodes);
-      return { ...state, nodes: action.nodes, edges: updatedEdges as Edge[] };
+      return { ...state, nodes: action.nodes, edges: updatedEdges };
     }
     case 'SET_BASE_PACKAGE':
       return { ...state, basePackage: action.value };
     case 'SET_GLOBAL_ID_STRATEGY':
       return { ...state, globalIdStrategy: action.value };
+    case 'SET_GLOBAL_ENGINE':
+      return { ...state, globalEngine: action.value };
+    case 'SET_GLOBAL_CHARSET':
+      return { ...state, globalCharset: action.value };
+    case 'SET_TABLE_OPTION': {
+      const tables = state.schema.tables.map((t) =>
+        t.name === action.tableName ? { ...t, [action.key]: action.value } : t,
+      );
+      const nodes = state.nodes.map((n) => {
+        if (n.id !== action.tableName) return n;
+        const data = n.data as Record<string, unknown>;
+        const table = data.table as Record<string, unknown>;
+        return { ...n, data: { ...data, table: { ...table, [action.key]: action.value } } };
+      });
+      return { ...state, schema: { tables }, nodes };
+    }
     case 'TOGGLE_ROOT': {
       const roots = new Set(state.roots);
       if (roots.has(action.tableName)) {
@@ -262,6 +281,20 @@ function reducer(state: DesignerState, action: Action): DesignerState {
         ...state,
         edges: updateEdgeData(state.edges, action.edgeId, { joinColumn: action.joinColumn }),
       };
+    case 'SET_EDGE_WAYPOINT':
+      return {
+        ...state,
+        edges: updateEdgeData(state.edges, action.edgeId, { midX: action.x, midY: action.y }),
+      };
+    case 'SET_EDGE_HANDLES':
+      return {
+        ...state,
+        edges: state.edges.map((e) =>
+          e.id === action.edgeId
+            ? { ...e, sourceHandle: action.sourceHandle, targetHandle: action.targetHandle, data: { ...e.data, manualHandles: true } }
+            : e,
+        ),
+      };
     case 'CONFIRM_EDGE': {
       const edge = state.edges.find((e) => e.id === action.edgeId);
       if (!edge) return state;
@@ -306,7 +339,9 @@ function reducer(state: DesignerState, action: Action): DesignerState {
     case 'SET_HIDDEN_COLUMNS':
       return { ...state, hiddenColumns: action.columns };
     case 'SET_DEFAULT_COLUMNS':
-      return { ...state, defaultColumns: action.columns.filter((c) => c.name.trim()) };
+      return { ...state, defaultColumns: action.columns };
+    case 'SET_DEFAULT_INDEXES':
+      return { ...state, defaultIndexes: action.indexes };
     case 'ADD_TABLE': {
       const idColumn: TableColumn = {
         name: 'id',
@@ -323,7 +358,10 @@ function reducer(state: DesignerState, action: Action): DesignerState {
         name: action.tableName,
         schema: null,
         columns: [idColumn, ...state.defaultColumns.filter((c) => c.name.trim()).map((c) => ({ ...c }))],
-        indexes: [],
+        indexes: state.defaultIndexes.filter((idx) => idx.columns.length > 0).map((idx) => ({ ...idx, columns: [...idx.columns] })),
+        engine: null,
+        charset: null,
+        comment: null,
       };
       const newSchema = { tables: [...state.schema.tables, newTable] };
       const pos = findOpenPosition(state.nodes);
@@ -342,7 +380,8 @@ function reducer(state: DesignerState, action: Action): DesignerState {
         ...state.edges,
         ...allFkEdges.filter((e) => !existingPairs.has(`${e.source}::${e.target}`) && !existingPairs.has(`${e.target}::${e.source}`)),
       ];
-      return { ...state, schema: newSchema, nodes: newNodes, edges: newEdges };
+      const distributedEdges = recalculateEdgeHandles(newEdges, newNodes);
+      return { ...state, schema: newSchema, nodes: newNodes, edges: distributedEdges };
     }
     case 'RENAME_TABLE': {
       const { oldName, newName } = action;
@@ -355,10 +394,14 @@ function reducer(state: DesignerState, action: Action): DesignerState {
         const table = data.table as Record<string, unknown>;
         return { ...n, id: newName, data: { ...data, table: { ...table, name: newName } } };
       });
+      const renameHandle = (h: string | null | undefined) =>
+        h?.startsWith(`${oldName}-`) ? `${newName}-${h.slice(oldName.length + 1)}` : h;
       const edges = state.edges.map((e) => ({
         ...e,
         source: e.source === oldName ? newName : e.source,
         target: e.target === oldName ? newName : e.target,
+        sourceHandle: renameHandle(e.sourceHandle) ?? e.sourceHandle,
+        targetHandle: renameHandle(e.targetHandle) ?? e.targetHandle,
       }));
       const roots = new Set(Array.from(state.roots).map((r) => (r === oldName ? newName : r)));
       const aggregateAssignments: Record<string, string> = {};
@@ -479,11 +522,14 @@ function reducer(state: DesignerState, action: Action): DesignerState {
         defaultColNames,
       );
 
+      const allEdges = [...state.edges, newEdge];
+      const distributedEdges = recalculateEdgeHandles(allEdges, nodes);
+
       return {
         ...state,
         schema: { tables },
         nodes,
-        edges: [...state.edges, newEdge],
+        edges: distributedEdges,
         pendingConnection: null,
       };
     }
@@ -504,7 +550,7 @@ function createInitialState(schema: TableSchema, overrides?: InitialOverrides): 
       const handles =
         sourceNode && targetNode
           ? pickHandles(sourceNode, targetNode)
-          : { sourceHandle: `${def.source}-right`, targetHandle: `${def.target}-left` };
+          : { sourceHandle: `${def.source}-right-1`, targetHandle: `${def.target}-left-1` };
 
       return {
         id: `imported-${def.source}-${def.target}-${i}`,
@@ -523,17 +569,22 @@ function createInitialState(schema: TableSchema, overrides?: InitialOverrides): 
       };
     });
 
+    const distributedEdges = recalculateEdgeHandles(edges, nodes);
+
     return {
       schema,
       nodes,
-      edges,
+      edges: distributedEdges,
       basePackage: overrides.basePackage,
       globalIdStrategy: overrides.globalIdStrategy,
+      globalEngine: overrides.globalEngine,
+      globalCharset: overrides.globalCharset,
       roots: new Set(overrides.roots),
       aggregateAssignments: { ...overrides.aggregateAssignments },
       nodeIdStrategies: { ...overrides.nodeIdStrategies },
       hiddenColumns: [],
       defaultColumns: [],
+      defaultIndexes: [],
       selectedNodeId: null,
       selectedEdgeId: null,
       pendingConnection: null,
@@ -542,7 +593,8 @@ function createInitialState(schema: TableSchema, overrides?: InitialOverrides): 
 
   // Default: auto-detect FK candidates
   const fkCandidates = detectFkCandidates(schema.tables);
-  const edges = candidatesToEdges(fkCandidates, nodes);
+  const detectedEdges = candidatesToEdges(fkCandidates, nodes);
+  const edges = recalculateEdgeHandles(detectedEdges, nodes);
 
   return {
     schema,
@@ -550,11 +602,14 @@ function createInitialState(schema: TableSchema, overrides?: InitialOverrides): 
     edges,
     basePackage: 'com.example',
     globalIdStrategy: 'IDENTITY',
+    globalEngine: 'InnoDB',
+    globalCharset: 'utf8mb4',
     roots: new Set<string>(),
     aggregateAssignments: {},
     nodeIdStrategies: {},
     hiddenColumns: [],
     defaultColumns: [],
+    defaultIndexes: [],
     selectedNodeId: null,
     selectedEdgeId: null,
     pendingConnection: null,

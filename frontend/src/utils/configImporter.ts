@@ -4,6 +4,8 @@ import type { TableSchema, TableColumn, TableDef, TableIndex } from '../types/ta
 export interface InitialOverrides {
   basePackage: string;
   globalIdStrategy: IdStrategy;
+  globalEngine: string;
+  globalCharset: string;
   roots: string[];
   aggregateAssignments: Record<string, string>;
   nodeIdStrategies: Record<string, IdStrategy | null>;
@@ -152,7 +154,7 @@ export function importAggregateConfig(raw: unknown): {
         }
       }
 
-      return { name, schema: null, columns, indexes };
+      return { name, schema: null, columns, indexes, engine: null, charset: null, comment: null };
     });
     schema = { tables };
   }
@@ -162,6 +164,8 @@ export function importAggregateConfig(raw: unknown): {
     overrides: {
       basePackage: config.basePackage,
       globalIdStrategy: config.idStrategy,
+      globalEngine: config.globalEngine ?? 'InnoDB',
+      globalCharset: config.globalCharset ?? 'utf8mb4',
       roots,
       aggregateAssignments,
       nodeIdStrategies,

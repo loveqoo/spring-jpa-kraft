@@ -18,10 +18,13 @@ function columnDDL(col: TableColumn): string {
   if (col.defaultValue != null) {
     def += ` DEFAULT ${col.defaultValue}`;
   }
+  if (col.note) {
+    def += ` COMMENT '${col.note.replace(/'/g, "\\'")}'`;
+  }
   return def;
 }
 
-function tableDDL(table: TableDef): string {
+function tableDDL(table: TableDef, globalEngine: string, globalCharset: string): string {
   const lines: string[] = [];
 
   for (const col of table.columns) {
@@ -53,9 +56,17 @@ function tableDDL(table: TableDef): string {
     }
   }
 
-  return `CREATE TABLE ${escapeIdentifier(table.name)} (\n${lines.join(',\n')}\n);`;
+  let ddl = `CREATE TABLE ${escapeIdentifier(table.name)} (\n${lines.join(',\n')}\n)`;
+
+  const engine = table.engine ?? globalEngine;
+  const charset = table.charset ?? globalCharset;
+  if (engine) ddl += ` ENGINE=${engine}`;
+  if (charset) ddl += ` DEFAULT CHARSET=${charset}`;
+  if (table.comment) ddl += ` COMMENT='${table.comment.replace(/'/g, "\\'")}'`;
+  ddl += ';';
+  return ddl;
 }
 
-export function exportDDL(schema: TableSchema): string {
-  return schema.tables.map(tableDDL).join('\n\n');
+export function exportDDL(schema: TableSchema, globalEngine = 'InnoDB', globalCharset = 'utf8mb4'): string {
+  return schema.tables.map((t) => tableDDL(t, globalEngine, globalCharset)).join('\n\n');
 }

@@ -72,16 +72,34 @@ export default function AggregateDesigner({ schema, overrides, onBack }: Props) 
       buildAggregateConfig({
         basePackage: state.basePackage,
         globalIdStrategy: state.globalIdStrategy,
+        globalEngine: state.globalEngine,
+        globalCharset: state.globalCharset,
         roots: state.roots,
         nodeIdStrategies: state.nodeIdStrategies,
         edges: state.edges,
         aggregateAssignments: state.aggregateAssignments,
         schema: state.schema,
       }),
-    [state.basePackage, state.globalIdStrategy, state.roots, state.nodeIdStrategies, state.edges, state.aggregateAssignments, state.schema],
+    [state.basePackage, state.globalIdStrategy, state.globalEngine, state.globalCharset, state.roots, state.nodeIdStrategies, state.edges, state.aggregateAssignments, state.schema],
   );
 
-  const ddlText = useMemo(() => exportDDL(state.schema), [state.schema]);
+  // Waypoint update callback (stable ref via useCallback)
+  const updateWaypoint = useCallback(
+    (edgeId: string, x: number | null, y: number | null) => {
+      dispatch({ type: 'SET_EDGE_WAYPOINT', edgeId, x, y });
+    },
+    [dispatch],
+  );
+
+  // Inject waypoint callback into edge data for RelationEdge drag support
+  const enrichedEdges = useMemo(() => {
+    return state.edges.map((edge) => ({
+      ...edge,
+      data: { ...edge.data, updateWaypoint },
+    }));
+  }, [state.edges, updateWaypoint]);
+
+  const ddlText = useMemo(() => exportDDL(state.schema, state.globalEngine, state.globalCharset), [state.schema, state.globalEngine, state.globalCharset]);
 
   const validationErrors = useMemo(
     () => validateSchema({ schema: state.schema, edges: state.edges }),
@@ -110,11 +128,9 @@ export default function AggregateDesigner({ schema, overrides, onBack }: Props) 
   // On drag stop: enforce minimum spacing + assign aggregate if dropped into boundary
   const onNodeDragStop = useCallback(
     (_: React.MouseEvent, node: Node) => {
-      // Enforce minimum gap between nodes
+      // Enforce minimum gap between nodes + recalculate edge handles
       const spacedNodes = enforceSpacing(state.nodes, node.id);
-      if (spacedNodes !== state.nodes) {
-        dispatch({ type: 'SET_NODES_WITH_EDGE_RECALC', nodes: spacedNodes });
-      }
+      dispatch({ type: 'SET_NODES_WITH_EDGE_RECALC', nodes: spacedNodes });
 
       // Aggregate assignment (non-root only)
       if (!state.roots.has(node.id)) {
@@ -146,12 +162,13 @@ export default function AggregateDesigner({ schema, overrides, onBack }: Props) 
     ? state.schema.tables.find((t) => t.name === editingTable)
     : null;
 
-  const handleTableEditorSave = (newName: string, columns: TableColumn[], indexes: TableIndex[]) => {
+  const handleTableEditorSave = (newName: string, columns: TableColumn[], indexes: TableIndex[], comment: string | null) => {
     if (!editingTable) return;
     if (newName !== editingTable) {
       dispatch({ type: 'RENAME_TABLE', oldName: editingTable, newName });
     }
     dispatch({ type: 'UPDATE_COLUMNS', tableName: newName, columns, indexes });
+    dispatch({ type: 'SET_TABLE_OPTION', tableName: newName, key: 'comment', value: comment });
     setEditingTable(null);
   };
 
@@ -179,7 +196,13 @@ export default function AggregateDesigner({ schema, overrides, onBack }: Props) 
       }
       onConfirmEdge={(edgeId) => dispatch({ type: 'CONFIRM_EDGE', edgeId })}
       onDeleteEdge={(edgeId) => dispatch({ type: 'DELETE_EDGE', edgeId })}
+      onSetEdgeHandles={(edgeId, sourceHandle, targetHandle) =>
+        dispatch({ type: 'SET_EDGE_HANDLES', edgeId, sourceHandle, targetHandle })
+      }
       onEditTable={(tableName) => setEditingTable(tableName)}
+      onSetTableOption={(tableName, key, value) => dispatch({ type: 'SET_TABLE_OPTION', tableName, key, value })}
+      globalEngine={state.globalEngine}
+      globalCharset={state.globalCharset}
     />
   );
 
@@ -191,9 +214,15 @@ export default function AggregateDesigner({ schema, overrides, onBack }: Props) 
         hiddenColumns={state.hiddenColumns}
         onBasePackageChange={(v) => dispatch({ type: 'SET_BASE_PACKAGE', value: v })}
         onIdStrategyChange={(v) => dispatch({ type: 'SET_GLOBAL_ID_STRATEGY', value: v })}
+        globalEngine={state.globalEngine}
+        onEngineChange={(v) => dispatch({ type: 'SET_GLOBAL_ENGINE', value: v })}
+        globalCharset={state.globalCharset}
+        onCharsetChange={(v) => dispatch({ type: 'SET_GLOBAL_CHARSET', value: v })}
         onHiddenColumnsChange={(cols) => dispatch({ type: 'SET_HIDDEN_COLUMNS', columns: cols })}
         defaultColumns={state.defaultColumns}
         onDefaultColumnsChange={(cols) => dispatch({ type: 'SET_DEFAULT_COLUMNS', columns: cols })}
+        defaultIndexes={state.defaultIndexes}
+        onDefaultIndexesChange={(idxs) => dispatch({ type: 'SET_DEFAULT_INDEXES', indexes: idxs })}
         onAddTable={() => setAddTableOpen(true)}
         onExportDDL={() => setDdlPreviewOpen(true)}
         onExport={() => setPreviewOpen(true)}
@@ -205,7 +234,7 @@ export default function AggregateDesigner({ schema, overrides, onBack }: Props) 
         <div style={{ flex: 1, position: 'relative' }}>
           <ReactFlow
             nodes={enrichedNodes}
-            edges={state.edges}
+            edges={enrichedEdges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
@@ -216,6 +245,7 @@ export default function AggregateDesigner({ schema, overrides, onBack }: Props) 
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             connectionMode={ConnectionMode.Loose}
+            edgesReconnectable={false}
             fitView
             fitViewOptions={{ padding: 0.2 }}
           >
@@ -283,6 +313,8 @@ export default function AggregateDesigner({ schema, overrides, onBack }: Props) 
           indexes={editingTableDef.indexes}
           existingNames={existingTableNames.filter((n) => n !== editingTable)}
           defaultColumns={state.defaultColumns}
+          defaultIndexes={state.defaultIndexes}
+          tableComment={editingTableDef.comment}
           onSave={handleTableEditorSave}
           onDelete={handleTableEditorDelete}
           onCancel={() => setEditingTable(null)}

@@ -11,6 +11,17 @@ export function parseTableSchema(json: string): TableSchema {
     validateTableDef(table);
   }
 
+  // Normalize: ensure new optional fields have defaults
+  for (const table of parsed.tables) {
+    if (table.engine === undefined) table.engine = null;
+    if (table.charset === undefined) table.charset = null;
+    if (table.comment === undefined) table.comment = null;
+    if (!Array.isArray(table.indexes)) table.indexes = [];
+    for (const col of table.columns) {
+      if (col.note === undefined) col.note = null;
+    }
+  }
+
   return parsed as TableSchema;
 }
 

@@ -12,6 +12,8 @@ import type { TableSchema } from '../types/tableSchema';
 export interface AggregateState {
   basePackage: string;
   globalIdStrategy: IdStrategy;
+  globalEngine: string;
+  globalCharset: string;
   roots: Set<string>;
   nodeIdStrategies: Record<string, IdStrategy | null>;
   edges: Edge[];
@@ -32,7 +34,7 @@ function getJoinColumn(edge: Edge): string {
 }
 
 export function buildAggregateConfig(state: AggregateState): AggregateConfig {
-  const { basePackage, globalIdStrategy, roots, nodeIdStrategies, edges, aggregateAssignments, schema } = state;
+  const { basePackage, globalIdStrategy, globalEngine, globalCharset, roots, nodeIdStrategies, edges, aggregateAssignments, schema } = state;
 
   const confirmedEdges = edges.filter((e) => e.data?.confirmed !== false);
   const aggregates: AggregateDefinition[] = [];
@@ -120,6 +122,8 @@ export function buildAggregateConfig(state: AggregateState): AggregateConfig {
     basePackage,
     aggregates,
     idStrategy: globalIdStrategy,
+    globalEngine,
+    globalCharset,
     tableSchema: schema,
   };
 }

@@ -2,7 +2,7 @@ import { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import { Tag } from 'antd';
-import { KeyOutlined, CrownOutlined, CloseOutlined } from '@ant-design/icons';
+import { KeyOutlined, CrownOutlined, CloseOutlined, NodeIndexOutlined } from '@ant-design/icons';
 import type { TableDef, TableColumn } from '../types/tableSchema';
 
 interface AggregateColor {
@@ -20,13 +20,16 @@ interface TableNodeData {
   [key: string]: unknown;
 }
 
-const handleStyle = { width: 8, height: 8, background: '#555' };
+const HANDLE_POSITIONS = [20, 40, 60, 80]; // percentage positions per side
+
+const handleStyle = { width: 5, height: 5, background: '#bfbfbf' };
 
 function TableNode({ data }: NodeProps) {
   const { table, isRoot, aggregateColor, onRemoveFromAggregate, hiddenColumns } = data as TableNodeData;
   const hidden = new Set(hiddenColumns ?? []);
   const pkColumns = table.columns.filter((c: TableColumn) => c.primaryKey && !hidden.has(c.name));
   const regularColumns = table.columns.filter((c: TableColumn) => !c.primaryKey && !hidden.has(c.name));
+  const indexedColumns = new Set(table.indexes?.flatMap((idx) => idx.columns) ?? []);
 
   const borderColor = isRoot
     ? (aggregateColor?.border ?? '#1677ff')
@@ -42,7 +45,6 @@ function TableNode({ data }: NodeProps) {
 
   const borderWidth = isRoot ? 3 : aggregateColor ? 2 : 1;
 
-  // Non-root entity assigned to an aggregate → show remove button
   const showRemove = !isRoot && !!aggregateColor && !!onRemoveFromAggregate;
 
   return (
@@ -58,10 +60,47 @@ function TableNode({ data }: NodeProps) {
           : '0 1px 4px rgba(0,0,0,0.08)',
       }}
     >
-      <Handle type="source" position={Position.Top} id={`${table.name}-top`} style={handleStyle} />
-      <Handle type="source" position={Position.Right} id={`${table.name}-right`} style={handleStyle} />
-      <Handle type="source" position={Position.Bottom} id={`${table.name}-bottom`} style={handleStyle} />
-      <Handle type="source" position={Position.Left} id={`${table.name}-left`} style={handleStyle} />
+      {/* 4 handles per side = 16 total */}
+      {HANDLE_POSITIONS.map((pct, i) => (
+        <Handle
+          key={`top-${i}`}
+          type="source"
+          position={Position.Top}
+          id={`${table.name}-top-${i}`}
+          style={{ ...handleStyle, left: `${pct}%` }}
+          isConnectable={true}
+        />
+      ))}
+      {HANDLE_POSITIONS.map((pct, i) => (
+        <Handle
+          key={`right-${i}`}
+          type="source"
+          position={Position.Right}
+          id={`${table.name}-right-${i}`}
+          style={{ ...handleStyle, top: `${pct}%` }}
+          isConnectable={true}
+        />
+      ))}
+      {HANDLE_POSITIONS.map((pct, i) => (
+        <Handle
+          key={`bottom-${i}`}
+          type="source"
+          position={Position.Bottom}
+          id={`${table.name}-bottom-${i}`}
+          style={{ ...handleStyle, left: `${pct}%` }}
+          isConnectable={true}
+        />
+      ))}
+      {HANDLE_POSITIONS.map((pct, i) => (
+        <Handle
+          key={`left-${i}`}
+          type="source"
+          position={Position.Left}
+          id={`${table.name}-left-${i}`}
+          style={{ ...handleStyle, top: `${pct}%` }}
+          isConnectable={true}
+        />
+      ))}
 
       <div
         style={{
@@ -132,7 +171,9 @@ function TableNode({ data }: NodeProps) {
             key={col.name}
             style={{ padding: '3px 12px', display: 'flex', alignItems: 'center', gap: 6, color: '#595959' }}
           >
-            <span style={{ width: 11 }} />
+            {indexedColumns.has(col.name)
+              ? <NodeIndexOutlined style={{ color: '#52c41a', fontSize: 11, width: 11 }} />
+              : <span style={{ width: 11 }} />}
             <span>{col.name}</span>
             <Tag style={{ fontSize: 11, marginLeft: 'auto', lineHeight: '16px' }}>{formatType(col)}</Tag>
           </div>

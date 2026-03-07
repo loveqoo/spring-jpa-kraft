@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { Modal, Input, Button, Select, InputNumber, Checkbox, Alert, Divider, Typography, Popconfirm, Tooltip } from 'antd';
+import type { InputRef } from 'antd';
 import { PlusOutlined, DeleteOutlined, ArrowUpOutlined, ArrowDownOutlined, ImportOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import type { TableColumn, TableIndex } from '../types/tableSchema';
@@ -14,7 +15,9 @@ interface Props {
   indexes: TableIndex[];
   existingNames: string[];
   defaultColumns: TableColumn[];
-  onSave: (newName: string, columns: TableColumn[], indexes: TableIndex[]) => void;
+  defaultIndexes: TableIndex[];
+  tableComment: string | null;
+  onSave: (newName: string, columns: TableColumn[], indexes: TableIndex[], comment: string | null) => void;
   onDelete: () => void;
   onCancel: () => void;
 }
@@ -44,6 +47,8 @@ export default function TableEditorModal({
   indexes,
   existingNames,
   defaultColumns,
+  defaultIndexes,
+  tableComment,
   onSave,
   onDelete,
   onCancel,
@@ -52,7 +57,18 @@ export default function TableEditorModal({
   const [name, setName] = useState(tableName);
   const [cols, setCols] = useState<TableColumn[]>(columns);
   const [idxs, setIdxs] = useState<TableIndex[]>(indexes);
+  const [comment, setComment] = useState<string>(tableComment ?? '');
   const [error, setError] = useState<string | null>(null);
+  const focusTargetRef = useRef<{ type: 'col' | 'idx'; index: number } | null>(null);
+
+  const autoFocusRef = useCallback((type: 'col' | 'idx', index: number) => {
+    return (el: InputRef | null) => {
+      if (el && focusTargetRef.current?.type === type && focusTargetRef.current?.index === index) {
+        el.focus();
+        focusTargetRef.current = null;
+      }
+    };
+  }, []);
 
   const [prevOpen, setPrevOpen] = useState(false);
   if (open && !prevOpen) {
@@ -60,6 +76,7 @@ export default function TableEditorModal({
     setName(tableName);
     setCols(columns.map((c) => ({ ...c })));
     setIdxs(indexes.map((idx) => ({ ...idx, columns: [...idx.columns] })));
+    setComment(tableComment ?? '');
     setError(null);
   }
   if (!open && prevOpen) {
@@ -118,6 +135,16 @@ export default function TableEditorModal({
     });
   };
 
+  const applyDefaultIndexes = () => {
+    setIdxs((prev) => {
+      const existingKeys = new Set(prev.map((idx) => [...idx.columns].sort().join(',')));
+      const newIdxs = defaultIndexes
+        .filter((idx) => idx.columns.length > 0 && !existingKeys.has([...idx.columns].sort().join(',')))
+        .map((idx) => ({ ...idx, columns: [...idx.columns] }));
+      return [...prev, ...newIdxs];
+    });
+  };
+
   const handleSave = () => {
     const trimmed = name.trim().toLowerCase();
     if (!trimmed) {
@@ -137,7 +164,12 @@ export default function TableEditorModal({
       setError(t('tableEditor.allColumnsMustHaveName'));
       return;
     }
-    onSave(trimmed, cols, idxs);
+    const aiCount = cols.filter((c) => c.autoIncrement).length;
+    if (aiCount > 1) {
+      setError(t('tableEditor.onlyOneAutoIncrement'));
+      return;
+    }
+    onSave(trimmed, cols, idxs, comment.trim() || null);
   };
 
   const updateIdx = (index: number, patch: Partial<TableIndex>) => {
@@ -157,7 +189,7 @@ export default function TableEditorModal({
       title={t('tableEditor.title')}
       open={open}
       onCancel={onCancel}
-      width={780}
+      width={900}
       footer={
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           <Popconfirm
@@ -182,19 +214,30 @@ export default function TableEditorModal({
     >
       {error && <Alert type="error" message={error} showIcon style={{ marginBottom: 12 }} />}
 
-      {/* Table name */}
-      <div style={{ marginBottom: 16 }}>
-        <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
-          {t('tableEditor.tableName')}
-        </Text>
-        <Input
-          value={name}
-          onChange={(e) => {
-            setName(e.target.value);
-            setError(null);
-          }}
-          style={{ width: 300 }}
-        />
+      {/* Table name + comment */}
+      <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
+        <div style={{ flex: '0 0 300px' }}>
+          <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
+            {t('tableEditor.tableName')}
+          </Text>
+          <Input
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              setError(null);
+            }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
+            {t('tableEditor.tableComment')}
+          </Text>
+          <Input
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder={t('tableEditor.tableCommentPlaceholder')}
+          />
+        </div>
       </div>
 
       <Divider style={{ margin: '12px 0' }} />
@@ -215,7 +258,7 @@ export default function TableEditorModal({
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '140px 120px 70px repeat(3, 32px) 100px 64px',
+            gridTemplateColumns: '130px 110px 60px repeat(3, 28px) 90px 120px 60px',
             gap: 4,
             padding: '6px 8px',
             background: '#fafafa',
@@ -233,6 +276,7 @@ export default function TableEditorModal({
           <span>{t('tableEditor.colNN')}</span>
           <span>{t('tableEditor.colAI')}</span>
           <span>{t('tableEditor.colDefault')}</span>
+          <span>{t('tableEditor.colComment')}</span>
           <span />
         </div>
 
@@ -241,7 +285,7 @@ export default function TableEditorModal({
             key={i}
             style={{
               display: 'grid',
-              gridTemplateColumns: '140px 120px 70px repeat(3, 32px) 100px 64px',
+              gridTemplateColumns: '130px 110px 60px repeat(3, 28px) 90px 120px 60px',
               gap: 4,
               padding: '4px 8px',
               borderBottom: '1px solid #f5f5f5',
@@ -249,6 +293,7 @@ export default function TableEditorModal({
             }}
           >
             <Input
+              ref={autoFocusRef('col', i)}
               size="small"
               value={col.name}
               onChange={(e) => updateCol(i, { name: e.target.value })}
@@ -276,16 +321,23 @@ export default function TableEditorModal({
               placeholder="—"
             />
             <Checkbox
+              tabIndex={0}
               checked={col.primaryKey}
               disabled={!col.primaryKey && cols.some((c) => c.primaryKey)}
               onChange={(e) => updateCol(i, { primaryKey: e.target.checked })}
             />
-            <Checkbox checked={col.notNull} onChange={(e) => updateCol(i, { notNull: e.target.checked })} />
-            <Checkbox checked={col.autoIncrement} onChange={(e) => updateCol(i, { autoIncrement: e.target.checked })} />
+            <Checkbox tabIndex={0} checked={col.notNull} onChange={(e) => updateCol(i, { notNull: e.target.checked })} />
+            <Checkbox tabIndex={0} checked={col.autoIncrement} onChange={(e) => updateCol(i, { autoIncrement: e.target.checked })} />
             <Input
               size="small"
               value={col.defaultValue ?? ''}
               onChange={(e) => updateCol(i, { defaultValue: e.target.value || null })}
+              placeholder="—"
+            />
+            <Input
+              size="small"
+              value={col.note ?? ''}
+              onChange={(e) => updateCol(i, { note: e.target.value || null })}
               placeholder="—"
             />
             <div style={{ display: 'flex', gap: 2 }}>
@@ -325,7 +377,14 @@ export default function TableEditorModal({
         <Button
           type="dashed"
           icon={<PlusOutlined />}
-          onClick={() => setCols((prev) => [...prev, createEmptyColumn()])}
+          onClick={() => setCols((prev) => {
+              const defaultNames = new Set(defaultColumns.map((c) => c.name));
+              const firstDefaultIdx = prev.findIndex((c) => defaultNames.has(c.name));
+              const insertIdx = firstDefaultIdx === -1 ? prev.length : firstDefaultIdx;
+              focusTargetRef.current = { type: 'col', index: insertIdx };
+              if (firstDefaultIdx === -1) return [...prev, createEmptyColumn()];
+              return [...prev.slice(0, firstDefaultIdx), createEmptyColumn(), ...prev.slice(firstDefaultIdx)];
+            })}
           style={{ flex: 1 }}
           size="small"
         >
@@ -392,6 +451,7 @@ export default function TableEditorModal({
               }}
             >
               <Input
+                ref={autoFocusRef('idx', i)}
                 size="small"
                 value={idx.name ?? ''}
                 onChange={(e) => updateIdx(i, { name: e.target.value || null })}
@@ -407,6 +467,7 @@ export default function TableEditorModal({
                 placeholder={t('tableEditor.selectColumns')}
               />
               <Checkbox
+                tabIndex={0}
                 checked={idx.unique}
                 onChange={(e) => updateIdx(i, { unique: e.target.checked })}
               />
@@ -422,15 +483,30 @@ export default function TableEditorModal({
           ))}
         </div>
       )}
-      <Button
-        type="dashed"
-        icon={<PlusOutlined />}
-        onClick={() => setIdxs((prev) => [...prev, createEmptyIndex()])}
-        style={{ width: '100%', marginTop: 8 }}
-        size="small"
-      >
-        {t('tableEditor.addIndex')}
-      </Button>
+      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+        <Button
+          type="dashed"
+          icon={<PlusOutlined />}
+          onClick={() => {
+            focusTargetRef.current = { type: 'idx', index: idxs.length };
+            setIdxs((prev) => [...prev, createEmptyIndex()]);
+          }}
+          style={{ flex: 1 }}
+          size="small"
+        >
+          {t('tableEditor.addIndex')}
+        </Button>
+        {defaultIndexes.length > 0 && (
+          <Button
+            icon={<ImportOutlined />}
+            onClick={applyDefaultIndexes}
+            style={{ flex: 1 }}
+            size="small"
+          >
+            {t('tableEditor.applyDefaultIndexes')}
+          </Button>
+        )}
+      </div>
     </Modal>
   );
 }

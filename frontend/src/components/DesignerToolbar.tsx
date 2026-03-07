@@ -1,4 +1,4 @@
-import { Input, Select, Button, Tooltip, Divider, Popover, Tag, InputNumber } from 'antd';
+import { Input, Select, Button, Tooltip, Divider, Popover, Tag, InputNumber, Checkbox } from 'antd';
 import {
   ExportOutlined,
   ArrowLeftOutlined,
@@ -13,31 +13,30 @@ import {
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from './LanguageSwitcher';
 import { useResponsive } from '../hooks/useResponsive';
-import { ID_STRATEGIES, COLUMN_TYPES, TYPES_WITH_SIZE } from '../types/aggregateConfig';
+import { ID_STRATEGIES, COLUMN_TYPES, TYPES_WITH_SIZE, ENGINES, CHARSETS } from '../types/aggregateConfig';
 import type { IdStrategy } from '../types/aggregateConfig';
-import type { TableColumn } from '../types/tableSchema';
-
-const COMMON_AUDIT_COLUMNS = ['created_at', 'created_by', 'updated_at', 'updated_by'];
+import type { TableColumn, TableIndex } from '../types/tableSchema';
 
 const ID_STRATEGY_OPTIONS = ID_STRATEGIES.map((s) => ({ label: s, value: s }));
 const COLUMN_TYPE_OPTIONS = COLUMN_TYPES.map((ct) => ({ label: ct, value: ct }));
-
-const AUDIT_COLUMN_PRESET: TableColumn[] = [
-  { name: 'created_at', typeName: 'DATETIME', typeValue: null, primaryKey: false, notNull: true, unique: false, autoIncrement: false, defaultValue: null, note: null },
-  { name: 'created_by', typeName: 'VARCHAR', typeValue: 100, primaryKey: false, notNull: true, unique: false, autoIncrement: false, defaultValue: null, note: null },
-  { name: 'updated_at', typeName: 'DATETIME', typeValue: null, primaryKey: false, notNull: true, unique: false, autoIncrement: false, defaultValue: null, note: null },
-  { name: 'updated_by', typeName: 'VARCHAR', typeValue: 100, primaryKey: false, notNull: true, unique: false, autoIncrement: false, defaultValue: null, note: null },
-];
+const ENGINE_OPTIONS = ENGINES.map((e) => ({ label: e, value: e }));
+const CHARSET_OPTIONS = CHARSETS.map((c) => ({ label: c, value: c }));
 
 interface Props {
   basePackage: string;
   globalIdStrategy: IdStrategy;
+  globalEngine: string;
+  onEngineChange: (value: string) => void;
+  globalCharset: string;
+  onCharsetChange: (value: string) => void;
   hiddenColumns: string[];
   onBasePackageChange: (value: string) => void;
   onIdStrategyChange: (value: IdStrategy) => void;
   onHiddenColumnsChange: (columns: string[]) => void;
   defaultColumns: TableColumn[];
   onDefaultColumnsChange: (columns: TableColumn[]) => void;
+  defaultIndexes: TableIndex[];
+  onDefaultIndexesChange: (indexes: TableIndex[]) => void;
   onAddTable: () => void;
   onExportDDL: () => void;
   onExport: () => void;
@@ -48,12 +47,18 @@ interface Props {
 export default function DesignerToolbar({
   basePackage,
   globalIdStrategy,
+  globalEngine,
+  onEngineChange,
+  globalCharset,
+  onCharsetChange,
   hiddenColumns,
   onBasePackageChange,
   onIdStrategyChange,
   onHiddenColumnsChange,
   defaultColumns,
   onDefaultColumnsChange,
+  defaultIndexes,
+  onDefaultIndexesChange,
   onAddTable,
   onExportDDL,
   onExport,
@@ -63,9 +68,10 @@ export default function DesignerToolbar({
   const { t } = useTranslation();
   const { isMobile, isDesktop, isWideDesktop } = useResponsive();
   const hiddenCount = hiddenColumns.length;
+  const defaultColumnNames = defaultColumns.filter((c) => c.name.trim()).map((c) => c.name);
 
   const handleAddPreset = () => {
-    const merged = Array.from(new Set([...hiddenColumns, ...COMMON_AUDIT_COLUMNS]));
+    const merged = Array.from(new Set([...hiddenColumns, ...defaultColumnNames]));
     onHiddenColumnsChange(merged);
   };
 
@@ -102,7 +108,7 @@ export default function DesignerToolbar({
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Button size="small" type="link" onClick={handleAddPreset} style={{ padding: 0, fontSize: 12 }}>
-          {t('toolbar.addAuditColumns')}
+          {t('toolbar.addDefaultColumns')}
         </Button>
         {hiddenCount > 0 && (
           <Button size="small" type="link" danger onClick={() => onHiddenColumnsChange([])} style={{ padding: 0, fontSize: 12 }}>
@@ -135,10 +141,25 @@ export default function DesignerToolbar({
           style={{ width: '100%' }}
         />
       </div>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>{t('toolbar.engine')}</div>
+          <Select value={globalEngine} onChange={onEngineChange} options={ENGINE_OPTIONS} size="small" style={{ width: '100%' }} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>{t('toolbar.charset')}</div>
+          <Select value={globalCharset} onChange={onCharsetChange} options={CHARSET_OPTIONS} size="small" style={{ width: '100%' }} />
+        </div>
+      </div>
       <Divider style={{ margin: '8px 0' }} />
       <div style={{ marginBottom: 12 }}>
         <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>{t('toolbar.defaultColumns')}</div>
-        <DefaultColumnsEditor columns={defaultColumns} onChange={onDefaultColumnsChange} compact />
+        <DefaultColumnsEditor columns={defaultColumns} onChange={onDefaultColumnsChange} defaultIndexes={defaultIndexes} compact />
+      </div>
+      <Divider style={{ margin: '8px 0' }} />
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>{t('toolbar.defaultIndexes')}</div>
+        <DefaultIndexesEditor indexes={defaultIndexes} onChange={onDefaultIndexesChange} columnNames={defaultColumnNames} compact />
       </div>
       <Divider style={{ margin: '8px 0' }} />
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -215,6 +236,22 @@ export default function DesignerToolbar({
         </Tooltip>
       )}
 
+      {/* ENGINE — desktop only inline */}
+      {isDesktop && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 12, color: '#8c8c8c', whiteSpace: 'nowrap' }}>{t('toolbar.engine')}</span>
+          <Select value={globalEngine} onChange={onEngineChange} options={ENGINE_OPTIONS} size="small" style={{ width: 100 }} />
+        </div>
+      )}
+
+      {/* CHARSET — desktop only inline */}
+      {isDesktop && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 12, color: '#8c8c8c', whiteSpace: 'nowrap' }}>{t('toolbar.charset')}</span>
+          <Select value={globalCharset} onChange={onCharsetChange} options={CHARSET_OPTIONS} size="small" style={{ width: 110 }} />
+        </div>
+      )}
+
       {/* Spacer */}
       <div style={{ flex: '1 1 0', minWidth: 0 }} />
 
@@ -231,20 +268,29 @@ export default function DesignerToolbar({
         {isDesktop && (
           <Popover
             content={
-              <DefaultColumnsEditor
-                columns={defaultColumns}
-                onChange={onDefaultColumnsChange}
-              />
+              <div>
+                <DefaultColumnsEditor
+                  columns={defaultColumns}
+                  onChange={onDefaultColumnsChange}
+                  defaultIndexes={defaultIndexes}
+                />
+                <Divider style={{ margin: '12px 0' }} />
+                <DefaultIndexesEditor
+                  indexes={defaultIndexes}
+                  onChange={onDefaultIndexesChange}
+                  columnNames={defaultColumnNames}
+                />
+              </div>
             }
-            title={t('toolbar.defaultColumnsTitle')}
+            title={t('toolbar.defaultSettingsTitle')}
             trigger="click"
             placement="bottomRight"
           >
             <Button
               type="text"
-              style={{ color: defaultColumns.length > 0 ? '#1677ff' : '#8c8c8c', fontSize: 12, whiteSpace: 'nowrap' }}
+              style={{ color: defaultColumns.length > 0 || defaultIndexes.length > 0 ? '#1677ff' : '#8c8c8c', fontSize: 12, whiteSpace: 'nowrap' }}
             >
-              {isWideDesktop ? t('toolbar.defaultColumns') : t('toolbar.defaultColumnsShort')}{defaultColumns.length > 0 ? ` (${defaultColumns.length})` : ''}
+              {isWideDesktop ? t('toolbar.defaultSettings') : t('toolbar.defaultSettingsShort')}{defaultColumns.length + defaultIndexes.length > 0 ? ` (${defaultColumns.length + defaultIndexes.length})` : ''}
             </Button>
           </Popover>
         )}
@@ -321,10 +367,12 @@ export default function DesignerToolbar({
 function DefaultColumnsEditor({
   columns,
   onChange,
+  defaultIndexes = [],
   compact = false,
 }: {
   columns: TableColumn[];
   onChange: (columns: TableColumn[]) => void;
+  defaultIndexes?: TableIndex[];
   compact?: boolean;
 }) {
   const { t } = useTranslation();
@@ -352,12 +400,6 @@ function DefaultColumnsEditor({
 
   const removeColumn = (index: number) => {
     onChange(columns.filter((_, i) => i !== index));
-  };
-
-  const addAuditPreset = () => {
-    const existingNames = new Set(columns.map((c) => c.name));
-    const newCols = AUDIT_COLUMN_PRESET.filter((c) => !existingNames.has(c.name));
-    if (newCols.length > 0) onChange([...columns, ...newCols.map((c) => ({ ...c }))]);
   };
 
   const gridCols = compact ? '1fr 90px 50px 28px 28px' : '110px 100px 60px 32px 28px';
@@ -430,21 +472,30 @@ function DefaultColumnsEditor({
                 disabled={!TYPES_WITH_SIZE.has(col.typeName.toUpperCase())}
                 style={{ width: '100%' }}
                 placeholder="—"
+                onKeyDown={(e) => {
+                  if (e.key === 'Tab' && !e.shiftKey) {
+                    const row = (e.target as HTMLElement).closest('[style]')?.parentElement;
+                    const cb = row?.querySelector<HTMLInputElement>('.ant-checkbox-input');
+                    if (cb) { e.preventDefault(); cb.focus(); }
+                  }
+                }}
               />
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={col.notNull}
                 onChange={(e) => updateColumn(i, { notNull: e.target.checked })}
                 style={{ margin: '0 auto' }}
               />
-              <Button
-                type="text"
-                size="small"
-                danger
-                icon={<DeleteOutlined style={{ fontSize: 11 }} />}
-                onClick={() => removeColumn(i)}
-                style={{ padding: 0, minWidth: 0, height: 22 }}
-              />
+              <Tooltip title={defaultIndexes.some((idx) => idx.columns.includes(col.name)) ? t('toolbar.removeIndexFirst') : undefined}>
+                <Button
+                  type="text"
+                  size="small"
+                  danger
+                  icon={<DeleteOutlined style={{ fontSize: 11 }} />}
+                  onClick={() => removeColumn(i)}
+                  disabled={defaultIndexes.some((idx) => idx.columns.includes(col.name))}
+                  style={{ padding: 0, minWidth: 0, height: 22 }}
+                />
+              </Tooltip>
             </div>
           ))}
         </div>
@@ -454,17 +505,134 @@ function DefaultColumnsEditor({
         <Button size="small" type="dashed" icon={<PlusOutlined />} onClick={addColumn} style={{ fontSize: 12 }}>
           {t('toolbar.addColumn')}
         </Button>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Button size="small" type="link" onClick={addAuditPreset} style={{ padding: 0, fontSize: 12 }}>
-            {t('toolbar.auditColumns')}
+        {columns.length > 0 && (
+          <Button size="small" type="link" danger onClick={() => onChange([])} style={{ padding: 0, fontSize: 12 }}>
+            {t('toolbar.clearAll')}
           </Button>
-          {columns.length > 0 && (
-            <Button size="small" type="link" danger onClick={() => onChange([])} style={{ padding: 0, fontSize: 12 }}>
-              {t('toolbar.clearAll')}
-            </Button>
-          )}
-        </div>
+        )}
       </div>
+    </div>
+  );
+}
+
+function DefaultIndexesEditor({
+  indexes,
+  onChange,
+  columnNames,
+  compact = false,
+}: {
+  indexes: TableIndex[];
+  onChange: (indexes: TableIndex[]) => void;
+  columnNames: string[];
+  compact?: boolean;
+}) {
+  const { t } = useTranslation();
+
+  const addIndex = () => {
+    const existingKeys = new Set(indexes.map((idx) => [...idx.columns].sort().join(',')));
+    const newIndexes = columnNames
+      .filter((name) => !existingKeys.has(name))
+      .map((name) => ({
+        name: `idx_${name.replace(/[^a-z]/g, '')}`,
+        columns: [name],
+        unique: false,
+        primaryKey: false,
+      }));
+    if (newIndexes.length > 0) {
+      onChange([...indexes, ...newIndexes]);
+    }
+  };
+
+  const updateIndex = (index: number, patch: Partial<TableIndex>) => {
+    onChange(indexes.map((idx, i) => (i === index ? { ...idx, ...patch } : idx)));
+  };
+
+  const removeIndex = (index: number) => {
+    onChange(indexes.filter((_, i) => i !== index));
+  };
+
+  const indexedColumns = new Set(indexes.flatMap((idx) => idx.columns));
+  const allColumnsIndexed = columnNames.length > 0 && columnNames.every((n) => indexedColumns.has(n));
+
+  const colOptions = columnNames.map((n) => ({ label: n, value: n }));
+  const gridCols = compact ? '1fr 1fr 40px 28px' : '120px 1fr 50px 28px';
+
+  return (
+    <div style={{ width: compact ? '100%' : 420 }}>
+      <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 8 }}>
+        {t('toolbar.defaultIndexesDesc')}
+      </div>
+
+      {indexes.length > 0 && (
+        <div style={{ border: '1px solid #f0f0f0', borderRadius: 6, marginBottom: 8 }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: gridCols,
+              gap: 4,
+              padding: '4px 6px',
+              background: '#fafafa',
+              borderBottom: '1px solid #f0f0f0',
+              fontSize: 10,
+              color: '#8c8c8c',
+              fontWeight: 600,
+              alignItems: 'center',
+            }}
+          >
+            <span>{t('toolbar.idxName')}</span>
+            <span>{t('toolbar.idxColumns')}</span>
+            <span>{t('toolbar.idxUnique')}</span>
+            <span />
+          </div>
+          {indexes.map((idx, i) => (
+            <div
+              key={i}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: gridCols,
+                gap: 4,
+                padding: '3px 6px',
+                borderBottom: '1px solid #f5f5f5',
+                alignItems: 'center',
+              }}
+            >
+              <Input
+                size="small"
+                value={idx.name ?? ''}
+                onChange={(e) => updateIndex(i, { name: e.target.value || null })}
+                placeholder="idx_name"
+                style={{ fontSize: 12 }}
+              />
+              <Select
+                size="small"
+                mode="multiple"
+                value={idx.columns}
+                onChange={(v) => updateIndex(i, { columns: v })}
+                options={colOptions}
+                style={{ width: '100%', fontSize: 11 }}
+                placeholder={t('toolbar.idxSelectColumns')}
+              />
+              <Checkbox
+                checked={idx.unique}
+                onChange={(e) => updateIndex(i, { unique: e.target.checked })}
+                style={{ margin: '0 auto' }}
+              />
+              <Button
+                type="text"
+                size="small"
+                danger
+                icon={<DeleteOutlined style={{ fontSize: 11 }} />}
+                onClick={() => removeIndex(i)}
+                style={{ padding: 0, minWidth: 0, height: 22 }}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Button size="small" type="dashed" icon={<PlusOutlined />} onClick={addIndex} disabled={allColumnsIndexed || columnNames.length === 0} style={{ fontSize: 12, width: '100%' }}>
+        {t('toolbar.addIndexBatch')}
+      </Button>
     </div>
   );
 }
