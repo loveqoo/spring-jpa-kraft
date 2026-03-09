@@ -1,10 +1,13 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { ReactFlow, Background, Controls, MiniMap, ConnectionMode } from '@xyflow/react';
 import type { Node } from '@xyflow/react';
-import { Drawer } from 'antd';
+import { Drawer, FloatButton, Button, message } from 'antd';
+import { RobotOutlined, UndoOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import '@xyflow/react/dist/style.css';
 import type { TableSchema, TableColumn, TableIndex } from '../types/tableSchema';
 import type { InitialOverrides } from '../utils/configImporter';
+import { importAggregateConfig } from '../utils/configImporter';
 import { useAggregateState, AGGREGATE_COLORS } from '../hooks/useAggregateState';
 import { useResponsive } from '../hooks/useResponsive';
 import { buildAggregateConfig } from '../utils/configExporter';
@@ -12,6 +15,12 @@ import { exportDDL } from '../utils/ddlExporter';
 import { hitTestAggregate } from '../utils/boundaryHitTest';
 import { enforceSpacing } from '../utils/nodeSpacing';
 import { validateSchema } from '../utils/schemaValidator';
+import { isAIConfigured } from '../ai/aiClient';
+import { buildDesignerModificationMessages } from '../ai/prompts';
+import { useAIGenerate } from '../ai/useAIGenerate';
+import { deltaResponseSchema } from '../ai/schemas';
+import type { DeltaResponse } from '../ai/responseConverter';
+import { applyDeltaToConfig } from '../ai/responseConverter';
 import TableNode from './TableNode';
 import RelationEdge from './RelationEdge';
 import AggregateBoundary from './AggregateBoundary';
@@ -24,6 +33,8 @@ import DdlPreview from './DdlPreview';
 import ConnectionModal from './ConnectionModal';
 import type { ConfirmedConnectionResult } from './ConnectionModal';
 import ValidationPanel from './ValidationPanel';
+import AIPromptInput from './AIPromptInput';
+import AIDiffPreview from './AIDiffPreview';
 
 interface Props {
   schema: TableSchema;
@@ -33,11 +44,22 @@ interface Props {
 
 export default function AggregateDesigner({ schema, overrides, onBack }: Props) {
   const { state, dispatch, onNodesChange, onEdgesChange, onConnect } = useAggregateState(schema, overrides);
-  const { isDesktop } = useResponsive();
+  const { isMobile, isDesktop } = useResponsive();
+  const { t } = useTranslation();
   const [previewOpen, setPreviewOpen] = useState(false);
   const [addTableOpen, setAddTableOpen] = useState(false);
   const [ddlPreviewOpen, setDdlPreviewOpen] = useState(false);
   const [editingTable, setEditingTable] = useState<string | null>(null);
+  const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const aiConfigured = isAIConfigured();
+  const { generate: aiGenerate, loading: aiLoading, error: aiError, streamText, abort: aiAbort } = useAIGenerate<DeltaResponse>();
+
+  // Undo: store previous state snapshot
+  const undoSnapshotRef = useRef<{ schema: TableSchema; overrides?: InitialOverrides } | null>(null);
+  const [canUndo, setCanUndo] = useState(false);
+
+  // Diff preview: store pending delta from AI
+  const [pendingDelta, setPendingDelta] = useState<DeltaResponse | null>(null);
 
   const nodeTypes = useMemo(() => ({ tableNode: TableNode }), []);
   const edgeTypes = useMemo(() => ({ relationEdge: RelationEdge }), []);
@@ -82,6 +104,52 @@ export default function AggregateDesigner({ schema, overrides, onBack }: Props) 
       }),
     [state.basePackage, state.globalIdStrategy, state.globalEngine, state.globalCharset, state.roots, state.nodeIdStrategies, state.edges, state.aggregateAssignments, state.schema],
   );
+
+  const handleAIModify = useCallback(async (prompt: string, targetTables: string[]) => {
+    const messages = buildDesignerModificationMessages(config, prompt, targetTables.length > 0 ? targetTables : undefined);
+    const delta = await aiGenerate(messages, { schema: deltaResponseSchema, stream: true });
+    if (delta) {
+      // Check if delta has any actual content
+      const hasChanges = (delta.add_tables?.length ?? 0) + (delta.remove_tables?.length ?? 0) +
+        (delta.add_columns?.length ?? 0) + (delta.remove_columns?.length ?? 0) +
+        (delta.add_relationships?.length ?? 0) + (delta.remove_relationships?.length ?? 0) > 0;
+      if (!hasChanges) {
+        message.info(t('ai.noChanges'));
+      } else {
+        setPendingDelta(delta);
+      }
+    }
+  }, [config, aiGenerate, t]);
+
+  const handleDiffApply = useCallback((filteredDelta: DeltaResponse) => {
+    // Apply filtered delta directly to existing config (preserves indexes, columns, etc.)
+    const newConfig = applyDeltaToConfig(config, filteredDelta);
+
+    // Save undo snapshot before applying
+    undoSnapshotRef.current = {
+      schema: state.schema,
+      overrides: importAggregateConfig(config).overrides,
+    };
+    setCanUndo(true);
+
+    const { schema: newSchema, overrides: newOverrides } = importAggregateConfig(newConfig);
+    dispatch({ type: 'RESET_STATE', schema: newSchema, overrides: newOverrides });
+    setPendingDelta(null);
+    setAiPanelOpen(false);
+  }, [state.schema, config, dispatch]);
+
+  const handleDiffReject = useCallback(() => {
+    setPendingDelta(null);
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    const snapshot = undoSnapshotRef.current;
+    if (!snapshot) return;
+    dispatch({ type: 'RESET_STATE', schema: snapshot.schema, overrides: snapshot.overrides });
+    undoSnapshotRef.current = null;
+    setCanUndo(false);
+    message.success(t('ai.undoSuccess'));
+  }, [dispatch, t]);
 
   // Waypoint update callback (stable ref via useCallback)
   const updateWaypoint = useCallback(
@@ -327,6 +395,108 @@ export default function AggregateDesigner({ schema, overrides, onBack }: Props) 
         tableCount={state.schema.tables.length}
         onClose={() => setDdlPreviewOpen(false)}
       />
+
+      {/* AI Diff Preview modal */}
+      {pendingDelta && (
+        <AIDiffPreview
+          open={!!pendingDelta}
+          delta={pendingDelta}
+          onApply={handleDiffApply}
+          onReject={handleDiffReject}
+        />
+      )}
+
+      {/* AI floating panel */}
+      {aiConfigured && (
+        <>
+          {!aiPanelOpen && (
+            <div style={{ position: 'fixed', right: isDesktop ? 340 : 24, bottom: 80, display: 'flex', flexDirection: 'column', gap: 8, zIndex: 1000 }}>
+              {canUndo && (
+                <Button
+                  shape="circle"
+                  size="large"
+                  icon={<UndoOutlined />}
+                  onClick={handleUndo}
+                  title={t('ai.undo')}
+                  style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
+                />
+              )}
+              <FloatButton
+                icon={<RobotOutlined />}
+                type="primary"
+                onClick={() => setAiPanelOpen(true)}
+                style={{ position: 'relative', right: 0, bottom: 0 }}
+              />
+            </div>
+          )}
+          {aiPanelOpen && (
+            <div
+              style={{
+                position: 'fixed',
+                bottom: isMobile ? 16 : 80,
+                right: isMobile ? 12 : isDesktop ? 340 : 24,
+                left: isMobile ? 12 : undefined,
+                width: isMobile ? undefined : 400,
+                background: '#fff',
+                borderRadius: 12,
+                boxShadow: '0 6px 24px rgba(0,0,0,0.15)',
+                padding: 16,
+                zIndex: 1000,
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ fontWeight: 600, fontSize: 13 }}>
+                  <RobotOutlined style={{ marginRight: 6 }} />
+                  AI Assistant
+                </span>
+                <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                  {canUndo && (
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<UndoOutlined />}
+                      onClick={handleUndo}
+                      title={t('ai.undo')}
+                    />
+                  )}
+                  <button
+                    onClick={() => setAiPanelOpen(false)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: '#8c8c8c' }}
+                  >
+                    &times;
+                  </button>
+                </div>
+              </div>
+              {/* Streaming text display */}
+              {streamText && (
+                <div style={{
+                  background: '#f5f5f5',
+                  borderRadius: 6,
+                  padding: '8px 10px',
+                  marginBottom: 8,
+                  fontSize: 11,
+                  fontFamily: 'monospace',
+                  maxHeight: 120,
+                  overflow: 'auto',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-all',
+                  color: '#595959',
+                }}>
+                  {streamText}
+                </div>
+              )}
+              <AIPromptInput
+                onSubmit={handleAIModify}
+                loading={aiLoading}
+                error={aiError}
+                onAbort={aiAbort}
+                placeholder={t('ai.modifyDesign')}
+                tableNames={existingTableNames}
+              />
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

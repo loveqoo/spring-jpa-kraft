@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Input, Button, Alert, Typography, Card } from 'antd';
+import { Input, Button, Alert, Typography, Card, Divider } from 'antd';
 import {
   UploadOutlined,
   AppstoreOutlined,
@@ -7,12 +7,21 @@ import {
   ApiOutlined,
   FileTextOutlined,
   PlusSquareOutlined,
+  SettingOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import type { TableSchema } from '../types/tableSchema';
 import type { AggregateConfig } from '../types/aggregateConfig';
 import { parseTableSchema } from '../utils/schemaParser';
+import { isAIConfigured } from '../ai/aiClient';
+import { buildSchemaGenerationMessages } from '../ai/prompts';
+import { useAIGenerate } from '../ai/useAIGenerate';
+import { simpleSchemaResponseSchema } from '../ai/schemas';
+import type { SimpleSchemaResponse } from '../ai/responseConverter';
+import { convertSimpleToConfig } from '../ai/responseConverter';
 import LanguageSwitcher from './LanguageSwitcher';
+import AISettingsModal from './AISettingsModal';
+import AIPromptInput from './AIPromptInput';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -26,6 +35,18 @@ export default function SchemaInput({ onLoad, onLoadConfig }: Props) {
   const { t } = useTranslation();
   const [json, setJson] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const aiConfigured = isAIConfigured();
+  const { generate, loading: aiLoading, error: aiError, abort: aiAbort } = useAIGenerate<SimpleSchemaResponse>();
+
+  const handleAIGenerate = async (prompt: string, _targetTables: string[]) => {
+    const messages = buildSchemaGenerationMessages(prompt);
+    const result = await generate(messages, { schema: simpleSchemaResponseSchema, stream: true });
+    if (result && result.tables) {
+      const config = convertSimpleToConfig(result);
+      onLoadConfig(config);
+    }
+  };
 
   const features = [
     {
@@ -87,8 +108,15 @@ export default function SchemaInput({ onLoad, onLoadConfig }: Props) {
         position: 'relative',
       }}
     >
-      {/* Language Switcher */}
-      <div style={{ position: 'absolute', top: 16, right: 24 }}>
+      {/* Top-right controls */}
+      <div style={{ position: 'absolute', top: 16, right: 24, display: 'flex', gap: 8, alignItems: 'center' }}>
+        <Button
+          type="text"
+          icon={<SettingOutlined />}
+          onClick={() => setSettingsOpen(true)}
+          size="small"
+          title={t('ai.settingsTitle')}
+        />
         <LanguageSwitcher />
       </div>
 
@@ -215,7 +243,24 @@ export default function SchemaInput({ onLoad, onLoadConfig }: Props) {
         >
           {t('schemaInput.emptyCanvas')}
         </Button>
+
+        {aiConfigured && (
+          <>
+            <Divider style={{ margin: '16px 0 12px' }}>
+              <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.45)' }}>{t('ai.orUseAI')}</span>
+            </Divider>
+            <AIPromptInput
+              onSubmit={handleAIGenerate}
+              loading={aiLoading}
+              error={aiError}
+              onAbort={aiAbort}
+              placeholder={t('ai.generateSchema')}
+            />
+          </>
+        )}
       </Card>
+
+      <AISettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
       {/* Footer */}
       <Text type="secondary" style={{ marginTop: 32, fontSize: 12 }}>

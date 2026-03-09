@@ -49,8 +49,9 @@ test.describe('M. Multi-Aggregate', () => {
     // Select order_items (non-root) — should be able to pick from orders or payments
     await designer.clickNode('order_items');
 
-    // Open aggregate dropdown
-    const combobox = page.getByRole('combobox').nth(1);
+    // Open aggregate dropdown (scoped to ConfigPanel area)
+    const configArea = page.locator('div[style*="width: 300"]').or(page.locator('.ant-drawer-body'));
+    const combobox = configArea.locator('.ant-select').first().getByRole('combobox');
     await combobox.click();
 
     // Both roots should appear as options
@@ -90,9 +91,7 @@ test.describe('M. Multi-Aggregate', () => {
 
     // Assign order_items to orders
     await designer.clickNode('order_items');
-    const combobox = page.getByRole('combobox').nth(1);
-    await combobox.click();
-    await page.locator('div[role="option"][aria-label="orders"]').dispatchEvent('click');
+    await configPanel.assignAggregate('orders');
     await expect(page.getByText('orders aggregate')).toBeVisible();
 
     // Remove orders as root

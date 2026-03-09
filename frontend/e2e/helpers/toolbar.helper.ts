@@ -45,7 +45,7 @@ export class ToolbarHelper {
   }
 
   get defaultColumnsButton(): Locator {
-    return this.page.getByRole('button', { name: /Default Columns/ });
+    return this.page.getByRole('button', { name: /Default Settings|Defaults/ });
   }
 
   async setBasePackage(value: string) {
@@ -88,7 +88,7 @@ export class ToolbarHelper {
   /** Open Hidden Columns popover and add audit preset */
   async addAuditHiddenColumns() {
     await this.hiddenColumnsButton.click();
-    await this.page.getByText('+ Add audit columns').click();
+    await this.page.getByText('+ Hide audit columns').click();
   }
 
   /** Open Default Columns popover and add audit preset */

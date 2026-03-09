@@ -75,6 +75,7 @@ type Action =
   | { type: 'UPDATE_COLUMNS'; tableName: string; columns: TableColumn[]; indexes: TableIndex[] }
   | { type: 'SET_PENDING_CONNECTION'; connection: PendingConnection }
   | { type: 'CLEAR_PENDING_CONNECTION' }
+  | { type: 'RESET_STATE'; schema: TableSchema; overrides?: InitialOverrides }
   | {
       type: 'CREATE_CONFIRMED_EDGE';
       connection: PendingConnection;
@@ -451,6 +452,8 @@ function reducer(state: DesignerState, action: Action): DesignerState {
       return { ...state, pendingConnection: action.connection };
     case 'CLEAR_PENDING_CONNECTION':
       return { ...state, pendingConnection: null };
+    case 'RESET_STATE':
+      return createInitialState(action.schema, action.overrides);
     case 'CREATE_CONFIRMED_EDGE': {
       const { connection, relationType, joinColumn, fkTableName } = action;
       const sourceNode = state.nodes.find((n) => n.id === connection.source);

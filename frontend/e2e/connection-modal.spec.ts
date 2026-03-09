@@ -24,8 +24,8 @@ test.describe('J. Connection Modal', () => {
     await designer.expectEdgeCount(0);
 
     // Drag from orders node handle to order_items node handle
-    const sourceHandle = designer.node('orders').locator('[data-handleid="orders-right"]');
-    const targetHandle = designer.node('order_items').locator('[data-handleid="order_items-left"]');
+    const sourceHandle = designer.node('orders').locator('[data-handleid="orders-right-0"]');
+    const targetHandle = designer.node('order_items').locator('[data-handleid="order_items-left-0"]');
 
     await sourceHandle.dragTo(targetHandle, { force: true });
 
@@ -46,8 +46,8 @@ test.describe('J. Connection Modal', () => {
     }
 
     // Drag to create connection
-    const sourceHandle = designer.node('orders').locator('[data-handleid="orders-right"]');
-    const targetHandle = designer.node('order_items').locator('[data-handleid="order_items-left"]');
+    const sourceHandle = designer.node('orders').locator('[data-handleid="orders-right-0"]');
+    const targetHandle = designer.node('order_items').locator('[data-handleid="order_items-left-0"]');
     await sourceHandle.dragTo(targetHandle, { force: true });
 
     const connectionModal = page.locator('.ant-modal').filter({ hasText: 'Create Relation' });
@@ -68,8 +68,8 @@ test.describe('J. Connection Modal', () => {
       await page.getByRole('button', { name: 'Delete' }).click();
     }
 
-    const sourceHandle = designer.node('orders').locator('[data-handleid="orders-right"]');
-    const targetHandle = designer.node('order_items').locator('[data-handleid="order_items-left"]');
+    const sourceHandle = designer.node('orders').locator('[data-handleid="orders-right-0"]');
+    const targetHandle = designer.node('order_items').locator('[data-handleid="order_items-left-0"]');
     await sourceHandle.dragTo(targetHandle, { force: true });
 
     const connectionModal = page.locator('.ant-modal').filter({ hasText: 'Create Relation' });
@@ -92,8 +92,8 @@ test.describe('J. Connection Modal', () => {
     }
     await designer.expectEdgeCount(0);
 
-    const sourceHandle = designer.node('orders').locator('[data-handleid="orders-right"]');
-    const targetHandle = designer.node('order_items').locator('[data-handleid="order_items-left"]');
+    const sourceHandle = designer.node('orders').locator('[data-handleid="orders-right-0"]');
+    const targetHandle = designer.node('order_items').locator('[data-handleid="order_items-left-0"]');
     await sourceHandle.dragTo(targetHandle, { force: true });
 
     const connectionModal = page.locator('.ant-modal').filter({ hasText: 'Create Relation' });
@@ -121,8 +121,8 @@ test.describe('J. Connection Modal', () => {
     }
     await designer.expectEdgeCount(0);
 
-    const sourceHandle = designer.node('orders').locator('[data-handleid="orders-right"]');
-    const targetHandle = designer.node('order_items').locator('[data-handleid="order_items-left"]');
+    const sourceHandle = designer.node('orders').locator('[data-handleid="orders-right-0"]');
+    const targetHandle = designer.node('order_items').locator('[data-handleid="order_items-left-0"]');
     await sourceHandle.dragTo(targetHandle, { force: true });
 
     const connectionModal = page.locator('.ant-modal').filter({ hasText: 'Create Relation' });
@@ -145,8 +145,8 @@ test.describe('J. Connection Modal', () => {
       await page.getByRole('button', { name: 'Delete' }).click();
     }
 
-    const sourceHandle = designer.node('orders').locator('[data-handleid="orders-right"]');
-    const targetHandle = designer.node('order_items').locator('[data-handleid="order_items-left"]');
+    const sourceHandle = designer.node('orders').locator('[data-handleid="orders-right-0"]');
+    const targetHandle = designer.node('order_items').locator('[data-handleid="order_items-left-0"]');
     await sourceHandle.dragTo(targetHandle, { force: true });
 
     const connectionModal = page.locator('.ant-modal').filter({ hasText: 'Create Relation' });

@@ -15,7 +15,7 @@ export class SchemaInputHelper {
 
   constructor(page: Page) {
     this.page = page;
-    this.textarea = page.locator('textarea');
+    this.textarea = page.getByRole('textbox', { name: /Paste a TableSchema/ });
     this.loadButton = page.getByRole('button', { name: 'Load JSON' });
     this.emptyCanvasButton = page.getByRole('button', { name: 'Start with Empty Canvas' });
     this.errorAlert = page.locator('.ant-alert-error');

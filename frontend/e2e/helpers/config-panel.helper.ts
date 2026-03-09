@@ -65,15 +65,26 @@ export class ConfigPanelHelper {
     await expect(this.page.locator('h5').filter({ hasText: name })).toBeVisible();
   }
 
-  /** "Belongs to Aggregate" dropdown */
+  /** "Belongs to Aggregate" dropdown — scoped to ConfigPanel area */
   get aggregateSelect(): Locator {
-    // It's the Select below "Belongs to Aggregate" section label
-    return this.page.locator('.ant-select').nth(0);
+    return this.configArea.locator('.ant-select').first();
+  }
+
+  /** The config panel area (right sidebar or drawer) */
+  private get configArea(): Locator {
+    return this.page.locator('div[style*="width: 300"]').or(this.page.locator('.ant-drawer-body'));
+  }
+
+  /** Find the aggregate combobox by looking for the select near the "Belongs to Aggregate" label */
+  private getAggregateCombobox(): Locator {
+    // The aggregate select is the first select in the config panel area
+    // It appears after the "Belongs to Aggregate" label
+    return this.configArea.locator('.ant-select').first().getByRole('combobox');
   }
 
   /** Select an aggregate from the "Belongs to Aggregate" dropdown */
   async assignAggregate(rootName: string) {
-    const combobox = this.page.getByRole('combobox').nth(1);
+    const combobox = this.getAggregateCombobox();
     await combobox.click();
     await this.page.waitForTimeout(100);
     // Navigate options with keyboard until we find the target
@@ -82,21 +93,19 @@ export class ConfigPanelHelper {
     for (let i = 0; i < count; i++) {
       const text = await options.nth(i).textContent();
       if (text?.includes(rootName)) {
-        // Click via the title/label text inside the option
         await options.nth(i).scrollIntoViewIfNeeded();
         await options.nth(i).dispatchEvent('click');
         break;
       }
     }
     await this.page.waitForTimeout(200);
-    // Close dropdown if still open
     await this.page.keyboard.press('Escape');
     await this.page.waitForTimeout(100);
   }
 
   /** Remove aggregate assignment by selecting "(None — independent)" */
   async removeAggregate() {
-    const combobox = this.page.getByRole('combobox').nth(1);
+    const combobox = this.getAggregateCombobox();
     await combobox.click();
     await this.page.waitForTimeout(100);
     const option = this.page.locator('.ant-select-item-option').filter({ hasText: 'None' }).first();

@@ -6,6 +6,11 @@ import { useTranslation } from 'react-i18next';
 import type { TableColumn, TableIndex } from '../types/tableSchema';
 import { AUDIT_COLUMN_NAMES } from '../types/tableSchema';
 import { COLUMN_TYPES, TYPES_WITH_SIZE } from '../types/aggregateConfig';
+import { isAIConfigured } from '../ai/aiClient';
+import { buildTableModificationMessages } from '../ai/prompts';
+import { useAIGenerate } from '../ai/useAIGenerate';
+import { tableModResponseSchema } from '../ai/schemas';
+import AIPromptInput from './AIPromptInput';
 
 const { Text } = Typography;
 
@@ -70,6 +75,22 @@ export default function TableEditorModal({
       }
     };
   }, []);
+
+  const aiConfigured = isAIConfigured();
+  const { generate: aiGenerate, loading: aiLoading, error: aiError, abort: aiAbort } = useAIGenerate<{ columns: TableColumn[]; indexes: TableIndex[] }>();
+
+  const handleAIModify = useCallback(async (prompt: string, _targetTables: string[]) => {
+    const currentTable = { name, schema: null as string | null, columns: cols, indexes: idxs, engine: null as string | null, charset: null as string | null, comment: comment || null };
+    const messages = buildTableModificationMessages(currentTable, prompt);
+    const result = await aiGenerate(messages, { schema: tableModResponseSchema });
+    if (result && result.columns) {
+      // Preserve audit columns that AI doesn't return
+      const auditCols = cols.filter((c) => AUDIT_COLUMN_NAMES.has(c.name));
+      const resultWithoutAudit = result.columns.filter((c) => !AUDIT_COLUMN_NAMES.has(c.name));
+      setCols([...resultWithoutAudit, ...auditCols]);
+      if (result.indexes) setIdxs(result.indexes);
+    }
+  }, [name, cols, idxs, comment, aiGenerate]);
 
   const [prevOpen, setPrevOpen] = useState(false);
   if (open && !prevOpen) {
@@ -215,6 +236,19 @@ export default function TableEditorModal({
       }
     >
       {error && <Alert type="error" message={error} showIcon style={{ marginBottom: 12 }} />}
+
+      {/* AI prompt */}
+      {aiConfigured && (
+        <div style={{ marginBottom: 12 }}>
+          <AIPromptInput
+            onSubmit={handleAIModify}
+            loading={aiLoading}
+            error={aiError}
+            onAbort={aiAbort}
+            placeholder={t('ai.modifyTable')}
+          />
+        </div>
+      )}
 
       {/* Table name + comment */}
       <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>

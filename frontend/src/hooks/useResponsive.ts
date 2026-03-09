@@ -5,6 +5,7 @@ interface Breakpoints {
   isTablet: boolean;        // <= 1024px
   isDesktop: boolean;       // > 1024px
   isWideDesktop: boolean;   // >= 1280px
+  isExtraWide: boolean;     // >= 1600px
 }
 
 function getBreakpoints(width: number): Breakpoints {
@@ -13,6 +14,7 @@ function getBreakpoints(width: number): Breakpoints {
     isTablet: width > 768 && width <= 1024,
     isDesktop: width > 1024,
     isWideDesktop: width >= 1280,
+    isExtraWide: width >= 1600,
   };
 }
 
@@ -26,7 +28,8 @@ export function useResponsive(): Breakpoints {
         prev.isMobile === next.isMobile &&
         prev.isTablet === next.isTablet &&
         prev.isDesktop === next.isDesktop &&
-        prev.isWideDesktop === next.isWideDesktop
+        prev.isWideDesktop === next.isWideDesktop &&
+        prev.isExtraWide === next.isExtraWide
           ? prev
           : next,
       );

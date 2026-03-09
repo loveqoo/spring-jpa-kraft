@@ -1,7 +1,7 @@
 import { INVERSE_RELATION } from '../types/aggregateConfig';
 import type { AggregateConfig, IdStrategy, RelationType } from '../types/aggregateConfig';
 import type { TableSchema, TableColumn, TableIndex, TableDef } from '../types/tableSchema';
-import { makeIdColumn, makeFkColumn, makeFkIndex } from '../types/tableSchema';
+import { AUDIT_COLUMNS, AUDIT_COLUMN_NAMES, makeIdColumn, makeFkColumn, makeFkIndex } from '../types/tableSchema';
 
 export interface InitialOverrides {
   basePackage: string;
@@ -99,7 +99,13 @@ export function importAggregateConfig(raw: unknown): {
   // Use embedded tableSchema if available, otherwise reconstruct minimal schema
   let schema: TableSchema;
   if (config.tableSchema && Array.isArray(config.tableSchema.tables)) {
-    schema = config.tableSchema;
+    // Ensure every table has audit columns
+    schema = {
+      tables: config.tableSchema.tables.map((t) => ({
+        ...t,
+        columns: ensureAuditColumns(t.columns),
+      })),
+    };
   } else {
     const tables: TableDef[] = Array.from(tableNames).map((name) => {
       const columns: TableColumn[] = [makeIdColumn()];
@@ -180,4 +186,18 @@ function trackFkColumn(
     fkColumns.set(fkTable, new Set());
   }
   fkColumns.get(fkTable)!.add(joinColumn);
+}
+
+/**
+ * Ensure audit columns exist at the end of the column list.
+ * Skips any audit columns already present (dedup).
+ */
+function ensureAuditColumns(columns: TableColumn[]): TableColumn[] {
+  const existing = new Set(columns.map((c) => c.name));
+  const missing = AUDIT_COLUMNS.filter((c) => !existing.has(c.name));
+  if (missing.length === 0) return columns;
+  // Remove any misplaced audit columns and re-append at the end
+  const withoutAudit = columns.filter((c) => !AUDIT_COLUMN_NAMES.has(c.name));
+  const existingAudit = columns.filter((c) => AUDIT_COLUMN_NAMES.has(c.name));
+  return [...withoutAudit, ...existingAudit, ...missing.map((c) => ({ ...c }))];
 }

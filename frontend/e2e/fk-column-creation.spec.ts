@@ -43,8 +43,8 @@ test.describe('FK column creation via ConnectionModal', () => {
   });
 
   test('drag orders→products: FK column added to orders node', async ({ page }) => {
-    const sourceHandle = designer.node('orders').locator('[data-handleid="orders-right"]');
-    const targetHandle = designer.node('products').locator('[data-handleid="products-left"]');
+    const sourceHandle = designer.node('orders').locator('[data-handleid="orders-right-0"]');
+    const targetHandle = designer.node('products').locator('[data-handleid="products-left-0"]');
     await dragHandle(page, sourceHandle, targetHandle);
 
     const connectionModal = page.locator('.ant-modal').filter({ hasText: 'Create Relation' });
@@ -67,8 +67,8 @@ test.describe('FK column creation via ConnectionModal', () => {
 
   test('drag products→orders: FK column added to products node', async ({ page }) => {
     // products is to the right of orders; use left handle of products → right handle of orders
-    const sourceHandle = designer.node('products').locator('[data-handleid="products-left"]');
-    const targetHandle = designer.node('orders').locator('[data-handleid="orders-right"]');
+    const sourceHandle = designer.node('products').locator('[data-handleid="products-left-0"]');
+    const targetHandle = designer.node('orders').locator('[data-handleid="orders-right-0"]');
     await dragHandle(page, sourceHandle, targetHandle);
 
     const connectionModal = page.locator('.ant-modal').filter({ hasText: 'Create Relation' });
@@ -84,8 +84,8 @@ test.describe('FK column creation via ConnectionModal', () => {
   });
 
   test('change cardinality to OneToMany: FK column on target side', async ({ page }) => {
-    const sourceHandle = designer.node('orders').locator('[data-handleid="orders-right"]');
-    const targetHandle = designer.node('products').locator('[data-handleid="products-left"]');
+    const sourceHandle = designer.node('orders').locator('[data-handleid="orders-right-0"]');
+    const targetHandle = designer.node('products').locator('[data-handleid="products-left-0"]');
     await dragHandle(page, sourceHandle, targetHandle);
 
     const connectionModal = page.locator('.ant-modal').filter({ hasText: 'Create Relation' });
@@ -134,8 +134,8 @@ test('FK column inserted before audit default columns', async ({ page }) => {
   await page.waitForTimeout(500);
 
   // Connect orders → products
-  const sourceHandle = designer.node('orders').locator('[data-handleid="orders-right"]');
-  const targetHandle = designer.node('products').locator('[data-handleid="products-left"]');
+  const sourceHandle = designer.node('orders').locator('[data-handleid="orders-right-0"]');
+  const targetHandle = designer.node('products').locator('[data-handleid="products-left-0"]');
   await dragHandle(page, sourceHandle, targetHandle);
 
   const connectionModal = page.locator('.ant-modal').filter({ hasText: 'Create Relation' });

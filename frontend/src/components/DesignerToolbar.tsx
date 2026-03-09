@@ -16,7 +16,7 @@ import { useResponsive } from '../hooks/useResponsive';
 import { ID_STRATEGIES, COLUMN_TYPES, TYPES_WITH_SIZE, ENGINES, CHARSETS } from '../types/aggregateConfig';
 import type { IdStrategy } from '../types/aggregateConfig';
 import type { TableColumn, TableIndex } from '../types/tableSchema';
-import { AUDIT_COLUMN_NAMES } from '../types/tableSchema';
+import { AUDIT_COLUMNS, AUDIT_COLUMN_NAMES } from '../types/tableSchema';
 
 const ID_STRATEGY_OPTIONS = ID_STRATEGIES.map((s) => ({ label: s, value: s }));
 const COLUMN_TYPE_OPTIONS = COLUMN_TYPES.map((ct) => ({ label: ct, value: ct }));
@@ -67,7 +67,7 @@ export default function DesignerToolbar({
   exportDisabled = false,
 }: Props) {
   const { t } = useTranslation();
-  const { isMobile, isDesktop, isWideDesktop } = useResponsive();
+  const { isMobile, isDesktop, isWideDesktop, isExtraWide } = useResponsive();
   const hiddenCount = hiddenColumns.length;
   const defaultColumnNames = defaultColumns.filter((c) => c.name.trim()).map((c) => c.name);
 
@@ -231,16 +231,16 @@ export default function DesignerToolbar({
         </Tooltip>
       )}
 
-      {/* ENGINE — desktop only inline */}
-      {isDesktop && (
+      {/* ENGINE — extra wide desktop only inline */}
+      {isExtraWide && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ fontSize: 12, color: '#8c8c8c', whiteSpace: 'nowrap' }}>{t('toolbar.engine')}</span>
           <Select value={globalEngine} onChange={onEngineChange} options={ENGINE_OPTIONS} size="small" style={{ width: 100 }} />
         </div>
       )}
 
-      {/* CHARSET — desktop only inline */}
-      {isDesktop && (
+      {/* CHARSET — extra wide desktop only inline */}
+      {isExtraWide && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ fontSize: 12, color: '#8c8c8c', whiteSpace: 'nowrap' }}>{t('toolbar.charset')}</span>
           <Select value={globalCharset} onChange={onCharsetChange} options={CHARSET_OPTIONS} size="small" style={{ width: 110 }} />
@@ -501,9 +501,23 @@ function DefaultColumnsEditor({
       )}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Button size="small" type="dashed" icon={<PlusOutlined />} onClick={addColumn} style={{ fontSize: 12 }}>
-          {t('toolbar.addColumn')}
-        </Button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <Button size="small" type="dashed" icon={<PlusOutlined />} onClick={addColumn} style={{ fontSize: 12 }}>
+            {t('toolbar.addColumn')}
+          </Button>
+          <Button
+            size="small"
+            type="link"
+            onClick={() => {
+              const existingNames = new Set(columns.map((c) => c.name));
+              const newCols = AUDIT_COLUMNS.filter((c) => !existingNames.has(c.name));
+              if (newCols.length > 0) onChange([...columns, ...newCols.map((c) => ({ ...c }))]);
+            }}
+            style={{ padding: 0, fontSize: 12 }}
+          >
+            {t('toolbar.addAuditColumns')}
+          </Button>
+        </div>
         {columns.length > 0 && (
           <Button size="small" type="link" danger onClick={() => onChange([])} style={{ padding: 0, fontSize: 12 }}>
             {t('toolbar.clearAll')}
