@@ -4,6 +4,8 @@ spring-boot = "4.0.3"
 spring-dependency-management = "1.1.7"
 ksp = "2.3.6"
 antlr4 = "4.13.2"
+arrow = "2.1.2"
+swagger = "2.2.45"
 
 [libraries]
 spring-boot-h2console = { module = "org.springframework.boot:spring-boot-h2console" }
@@ -23,6 +25,8 @@ mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version = "5.4.
 kotlin-compile-testing-ksp = { module = "dev.zacsweers.kctfork:ksp", version = "0.12.1" }
 antlr4 = { module = "org.antlr:antlr4", version.ref = "antlr4" }
 antlr4-runtime = { module = "org.antlr:antlr4-runtime", version.ref = "antlr4" }
+arrow-core = { module = "io.arrow-kt:arrow-core", version.ref = "arrow" }
+swagger-annotations = { module = "io.swagger.core.v3:swagger-annotations", version.ref = "swagger" }
 
 [plugins]
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }

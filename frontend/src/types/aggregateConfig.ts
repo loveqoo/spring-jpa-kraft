@@ -31,10 +31,15 @@ export interface RelationDefinition {
   joinColumn: string;
 }
 
+export interface ColumnOverride {
+  enumType?: string;
+}
+
 export interface EntityDefinition {
   table: string;
   relations: RelationDefinition[];
   idStrategy: IdStrategy | null;
+  columnOverrides?: Record<string, ColumnOverride>;
 }
 
 export interface AggregateDefinition {
@@ -42,12 +47,14 @@ export interface AggregateDefinition {
   relations: RelationDefinition[];
   entities: EntityDefinition[];
   idStrategy: IdStrategy | null;
+  columnOverrides?: Record<string, ColumnOverride>;
 }
 
 export interface AggregateConfig {
   basePackage: string;
   aggregates: AggregateDefinition[];
   idStrategy: IdStrategy;
+  enums?: Record<string, string[]>;
   globalEngine?: string;
   globalCharset?: string;
   tableSchema?: import('./tableSchema').TableSchema;

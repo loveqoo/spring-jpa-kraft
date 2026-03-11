@@ -101,8 +101,10 @@ export default function AggregateDesigner({ schema, overrides, onBack }: Props) 
         edges: state.edges,
         aggregateAssignments: state.aggregateAssignments,
         schema: state.schema,
+        enumDefinitions: state.enumDefinitions,
+        columnOverrides: state.columnOverrides,
       }),
-    [state.basePackage, state.globalIdStrategy, state.globalEngine, state.globalCharset, state.roots, state.nodeIdStrategies, state.edges, state.aggregateAssignments, state.schema],
+    [state.basePackage, state.globalIdStrategy, state.globalEngine, state.globalCharset, state.roots, state.nodeIdStrategies, state.edges, state.aggregateAssignments, state.schema, state.enumDefinitions, state.columnOverrides],
   );
 
   const handleAIModify = useCallback(async (prompt: string, targetTables: string[]) => {
@@ -133,7 +135,7 @@ export default function AggregateDesigner({ schema, overrides, onBack }: Props) 
     setCanUndo(true);
 
     const { schema: newSchema, overrides: newOverrides } = importAggregateConfig(newConfig);
-    dispatch({ type: 'RESET_STATE', schema: newSchema, overrides: newOverrides });
+    dispatch({ type: 'RESET_STATE', schema: newSchema, overrides: newOverrides, preserveSettings: true });
     setPendingDelta(null);
     setAiPanelOpen(false);
   }, [state.schema, config, dispatch]);
@@ -145,7 +147,7 @@ export default function AggregateDesigner({ schema, overrides, onBack }: Props) 
   const handleUndo = useCallback(() => {
     const snapshot = undoSnapshotRef.current;
     if (!snapshot) return;
-    dispatch({ type: 'RESET_STATE', schema: snapshot.schema, overrides: snapshot.overrides });
+    dispatch({ type: 'RESET_STATE', schema: snapshot.schema, overrides: snapshot.overrides, preserveSettings: true });
     undoSnapshotRef.current = null;
     setCanUndo(false);
     message.success(t('ai.undoSuccess'));
@@ -291,6 +293,10 @@ export default function AggregateDesigner({ schema, overrides, onBack }: Props) 
         onDefaultColumnsChange={(cols) => dispatch({ type: 'SET_DEFAULT_COLUMNS', columns: cols })}
         defaultIndexes={state.defaultIndexes}
         onDefaultIndexesChange={(idxs) => dispatch({ type: 'SET_DEFAULT_INDEXES', indexes: idxs })}
+        enumDefinitions={state.enumDefinitions}
+        onEnumAdd={(name, values) => dispatch({ type: 'ADD_ENUM', name, values })}
+        onEnumUpdate={(name, values) => dispatch({ type: 'UPDATE_ENUM', name, values })}
+        onEnumRemove={(name) => dispatch({ type: 'REMOVE_ENUM', name })}
         onAddTable={() => setAddTableOpen(true)}
         onExportDDL={() => setDdlPreviewOpen(true)}
         onExport={() => setPreviewOpen(true)}
@@ -383,6 +389,11 @@ export default function AggregateDesigner({ schema, overrides, onBack }: Props) 
           defaultColumns={state.defaultColumns}
           defaultIndexes={state.defaultIndexes}
           tableComment={editingTableDef.comment}
+          enumDefinitions={state.enumDefinitions}
+          columnOverrides={state.columnOverrides[editingTableDef.name] ?? {}}
+          onColumnOverrideChange={(columnName, override) =>
+            dispatch({ type: 'SET_COLUMN_OVERRIDE', tableName: editingTableDef.name, columnName, override })
+          }
           onSave={handleTableEditorSave}
           onDelete={handleTableEditorDelete}
           onCancel={() => setEditingTable(null)}

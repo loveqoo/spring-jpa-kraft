@@ -15,35 +15,38 @@ class FormResolverFileWriter {
 
     private fun writeFormResolver0(metadata: EntityMetadata): String {
         val sb = StringBuilder()
-        val servicePackage = "${metadata.basePackage}.service"
-        val entityPackage = "${metadata.basePackage}.entity"
-        val formPackage = "${metadata.basePackage}.form"
-        val repoPackage = "${metadata.basePackage}.repository"
         val cls = metadata.className
+        val isLongId = metadata.idType == "Long"
 
-        sb.appendLine("package $servicePackage")
+        sb.appendLine("package ${metadata.basePackage}")
         sb.appendLine()
-        sb.appendLine("import $entityPackage.$cls")
-        sb.appendLine("import $formPackage.${cls}CreateForm")
-        sb.appendLine("import $formPackage.${cls}UpdateForm")
-        sb.appendLine("import $repoPackage.${cls}Repository")
+        sb.appendLine("import arrow.core.raise.result")
         sb.appendLine("import jakarta.validation.Validator")
         sb.appendLine("import org.springframework.stereotype.Component")
-        sb.appendLine("import spring.kraft.form.FormResolver0")
+        sb.appendLine("import spring.kraft.core.updateProperty")
+        if (isLongId) {
+            sb.appendLine("import spring.kraft.LongFormResolver0")
+        } else {
+            sb.appendLine("import spring.kraft.form.FormResolver0")
+        }
+        appendEnumImports(sb, metadata)
         sb.appendLine()
 
         sb.appendLine("@Component")
         sb.appendLine("class ${cls}FormResolver(")
         sb.appendLine("    override val repo: ${cls}Repository,")
         sb.appendLine("    override val validator: Validator,")
-        sb.appendLine(") : FormResolver0<${metadata.idType}, $cls, ${cls}CreateForm, ${cls}UpdateForm>() {")
+        if (isLongId) {
+            sb.appendLine(") : LongFormResolver0<$cls, ${cls}CreateForm, ${cls}UpdateForm>() {")
+        } else {
+            sb.appendLine(") : FormResolver0<${metadata.idType}, $cls, ${cls}CreateForm, ${cls}UpdateForm>() {")
+        }
         sb.appendLine()
         sb.appendLine("    override fun ${cls}CreateForm.createEntity(): Result<$cls> =")
-        sb.appendLine("        Result.success($cls(${buildCreateArgs(metadata)}))")
+        sb.appendLine("        runCatching { $cls(${buildCreateArgs(metadata)}) }")
         sb.appendLine()
-        sb.appendLine("    override fun ${cls}UpdateForm.update(entity: $cls): Result<Unit> {")
-        sb.appendLine("        // TODO: implement update logic")
-        sb.appendLine("        return Result.success(Unit)")
+        sb.appendLine("    override fun ${cls}UpdateForm.update(entity: $cls): Result<Unit> = result {")
+        sb.appendLine(buildUpdateBody(metadata))
         sb.appendLine("    }")
         sb.appendLine("}")
         sb.appendLine()
@@ -53,27 +56,24 @@ class FormResolverFileWriter {
 
     private fun writeFormResolver1(metadata: EntityMetadata): String {
         val sb = StringBuilder()
-        val servicePackage = "${metadata.basePackage}.service"
-        val entityPackage = "${metadata.basePackage}.entity"
-        val formPackage = "${metadata.basePackage}.form"
-        val repoPackage = "${metadata.basePackage}.repository"
         val cls = metadata.className
         val parent = metadata.relations.first { it.type == "ManyToOne" || it.type == "OneToOne" }
         val parentCls = parent.targetClassName
         val parentIdField = NameConverter.toPropertyName(parent.joinColumnName)
         val parentIdType = parent.targetIdType
+        val parentBase = parent.targetBasePackage
 
-        sb.appendLine("package $servicePackage")
+        sb.appendLine("package ${metadata.basePackage}")
         sb.appendLine()
-        sb.appendLine("import $entityPackage.$cls")
-        sb.appendLine("import $entityPackage.$parentCls")
-        sb.appendLine("import $formPackage.${cls}CreateForm")
-        sb.appendLine("import $formPackage.${cls}UpdateForm")
-        sb.appendLine("import $repoPackage.${cls}Repository")
-        sb.appendLine("import $repoPackage.${parentCls}Repository")
+        sb.appendLine("import $parentBase.$parentCls")
+        sb.appendLine("import $parentBase.${parentCls}Repository")
+        sb.appendLine("import arrow.core.raise.result")
         sb.appendLine("import jakarta.validation.Validator")
         sb.appendLine("import org.springframework.stereotype.Component")
+        sb.appendLine("import spring.kraft.core.updateEntity")
+        sb.appendLine("import spring.kraft.core.updateProperty")
         sb.appendLine("import spring.kraft.form.FormResolver1")
+        appendEnumImports(sb, metadata)
         sb.appendLine()
 
         sb.appendLine("@Component")
@@ -89,16 +89,15 @@ class FormResolverFileWriter {
         sb.appendLine("        ${parentIdExpression(parentIdField, parent.nullable)}")
         sb.appendLine()
         sb.appendLine("    override fun ${cls}CreateForm.toEntity(p1: $parentCls): Result<$cls> =")
-        sb.appendLine("        Result.success($cls(${buildCreateArgsWithParent(metadata, parent)}))")
+        sb.appendLine("        runCatching { $cls(${buildCreateArgsWithParent(metadata, parent)}) }")
         sb.appendLine()
         sb.appendLine("    override fun ${cls}UpdateForm.parentId(): Result<$parentIdType?> =")
         sb.appendLine("        Result.success($parentIdField)")
         sb.appendLine()
         sb.appendLine(
-            "    override fun ${cls}UpdateForm.update(entity: $cls, parent: $parentCls?): Result<Unit> {",
+            "    override fun ${cls}UpdateForm.update(entity: $cls, parent: $parentCls?): Result<Unit> = result {",
         )
-        sb.appendLine("        // TODO: implement update logic")
-        sb.appendLine("        return Result.success(Unit)")
+        sb.appendLine(buildUpdateBody(metadata, listOf("parent" to parent)))
         sb.appendLine("    }")
         sb.appendLine("}")
         sb.appendLine()
@@ -108,28 +107,24 @@ class FormResolverFileWriter {
 
     private fun writeFormResolver2(metadata: EntityMetadata): String {
         val sb = StringBuilder()
-        val servicePackage = "${metadata.basePackage}.service"
-        val entityPackage = "${metadata.basePackage}.entity"
-        val formPackage = "${metadata.basePackage}.form"
-        val repoPackage = "${metadata.basePackage}.repository"
         val cls = metadata.className
         val parents = metadata.relations.filter { it.type == "ManyToOne" || it.type == "OneToOne" }
         val p1 = parents[0]
         val p2 = parents[1]
 
-        sb.appendLine("package $servicePackage")
+        sb.appendLine("package ${metadata.basePackage}")
         sb.appendLine()
-        sb.appendLine("import $entityPackage.$cls")
-        sb.appendLine("import $entityPackage.${p1.targetClassName}")
-        sb.appendLine("import $entityPackage.${p2.targetClassName}")
-        sb.appendLine("import $formPackage.${cls}CreateForm")
-        sb.appendLine("import $formPackage.${cls}UpdateForm")
-        sb.appendLine("import $repoPackage.${cls}Repository")
-        sb.appendLine("import $repoPackage.${p1.targetClassName}Repository")
-        sb.appendLine("import $repoPackage.${p2.targetClassName}Repository")
+        sb.appendLine("import ${p1.targetBasePackage}.${p1.targetClassName}")
+        sb.appendLine("import ${p2.targetBasePackage}.${p2.targetClassName}")
+        sb.appendLine("import ${p1.targetBasePackage}.${p1.targetClassName}Repository")
+        sb.appendLine("import ${p2.targetBasePackage}.${p2.targetClassName}Repository")
+        sb.appendLine("import arrow.core.raise.result")
         sb.appendLine("import jakarta.validation.Validator")
         sb.appendLine("import org.springframework.stereotype.Component")
+        sb.appendLine("import spring.kraft.core.updateEntity")
+        sb.appendLine("import spring.kraft.core.updateProperty")
         sb.appendLine("import spring.kraft.form.FormResolver2")
+        appendEnumImports(sb, metadata)
         sb.appendLine()
 
         val p1IdField = NameConverter.toPropertyName(p1.joinColumnName)
@@ -156,7 +151,7 @@ class FormResolverFileWriter {
             "    override fun ${cls}CreateForm.toEntity(" +
                 "p1: ${p1.targetClassName}, p2: ${p2.targetClassName}): Result<$cls> =",
         )
-        sb.appendLine("        Result.success($cls(${buildCreateArgsWithParents(metadata, listOf(p1, p2))}))")
+        sb.appendLine("        runCatching { $cls(${buildCreateArgsWithParents(metadata, listOf(p1, p2))}) }")
         sb.appendLine()
         sb.appendLine("    override fun ${cls}UpdateForm.parentId1(): Result<${p1.targetIdType}?> =")
         sb.appendLine("        Result.success($p1IdField)")
@@ -166,10 +161,9 @@ class FormResolverFileWriter {
         sb.appendLine()
         sb.appendLine(
             "    override fun ${cls}UpdateForm.update(" +
-                "entity: $cls, parent1: ${p1.targetClassName}?, parent2: ${p2.targetClassName}?): Result<Unit> {",
+                "entity: $cls, parent1: ${p1.targetClassName}?, parent2: ${p2.targetClassName}?): Result<Unit> = result {",
         )
-        sb.appendLine("        // TODO: implement update logic")
-        sb.appendLine("        return Result.success(Unit)")
+        sb.appendLine(buildUpdateBody(metadata, listOf("parent1" to p1, "parent2" to p2)))
         sb.appendLine("    }")
         sb.appendLine("}")
         sb.appendLine()
@@ -179,31 +173,27 @@ class FormResolverFileWriter {
 
     private fun writeFormResolver3(metadata: EntityMetadata): String {
         val sb = StringBuilder()
-        val servicePackage = "${metadata.basePackage}.service"
-        val entityPackage = "${metadata.basePackage}.entity"
-        val formPackage = "${metadata.basePackage}.form"
-        val repoPackage = "${metadata.basePackage}.repository"
         val cls = metadata.className
         val parents = metadata.relations.filter { it.type == "ManyToOne" || it.type == "OneToOne" }
         val p1 = parents[0]
         val p2 = parents[1]
         val p3 = parents[2]
 
-        sb.appendLine("package $servicePackage")
+        sb.appendLine("package ${metadata.basePackage}")
         sb.appendLine()
-        sb.appendLine("import $entityPackage.$cls")
-        sb.appendLine("import $entityPackage.${p1.targetClassName}")
-        sb.appendLine("import $entityPackage.${p2.targetClassName}")
-        sb.appendLine("import $entityPackage.${p3.targetClassName}")
-        sb.appendLine("import $formPackage.${cls}CreateForm")
-        sb.appendLine("import $formPackage.${cls}UpdateForm")
-        sb.appendLine("import $repoPackage.${cls}Repository")
-        sb.appendLine("import $repoPackage.${p1.targetClassName}Repository")
-        sb.appendLine("import $repoPackage.${p2.targetClassName}Repository")
-        sb.appendLine("import $repoPackage.${p3.targetClassName}Repository")
+        sb.appendLine("import ${p1.targetBasePackage}.${p1.targetClassName}")
+        sb.appendLine("import ${p2.targetBasePackage}.${p2.targetClassName}")
+        sb.appendLine("import ${p3.targetBasePackage}.${p3.targetClassName}")
+        sb.appendLine("import ${p1.targetBasePackage}.${p1.targetClassName}Repository")
+        sb.appendLine("import ${p2.targetBasePackage}.${p2.targetClassName}Repository")
+        sb.appendLine("import ${p3.targetBasePackage}.${p3.targetClassName}Repository")
+        sb.appendLine("import arrow.core.raise.result")
         sb.appendLine("import jakarta.validation.Validator")
         sb.appendLine("import org.springframework.stereotype.Component")
+        sb.appendLine("import spring.kraft.core.updateEntity")
+        sb.appendLine("import spring.kraft.core.updateProperty")
         sb.appendLine("import spring.kraft.form.FormResolver3")
+        appendEnumImports(sb, metadata)
         sb.appendLine()
 
         val p1Id = NameConverter.toPropertyName(p1.joinColumnName)
@@ -239,7 +229,7 @@ class FormResolverFileWriter {
                 "p3: ${p3.targetClassName}): Result<$cls> =",
         )
         sb.appendLine(
-            "        Result.success($cls(${buildCreateArgsWithParents(metadata, listOf(p1, p2, p3))}))",
+            "        runCatching { $cls(${buildCreateArgsWithParents(metadata, listOf(p1, p2, p3))}) }",
         )
         sb.appendLine()
         sb.appendLine("    override fun ${cls}UpdateForm.parentId1(): Result<${p1.targetIdType}?> =")
@@ -255,10 +245,9 @@ class FormResolverFileWriter {
             "    override fun ${cls}UpdateForm.update(" +
                 "entity: $cls, " +
                 "parent1: ${p1.targetClassName}?, parent2: ${p2.targetClassName}?, " +
-                "parent3: ${p3.targetClassName}?): Result<Unit> {",
+                "parent3: ${p3.targetClassName}?): Result<Unit> = result {",
         )
-        sb.appendLine("        // TODO: implement update logic")
-        sb.appendLine("        return Result.success(Unit)")
+        sb.appendLine(buildUpdateBody(metadata, listOf("parent1" to p1, "parent2" to p2, "parent3" to p3)))
         sb.appendLine("    }")
         sb.appendLine("}")
         sb.appendLine()
@@ -268,10 +257,6 @@ class FormResolverFileWriter {
 
     private fun writeFormResolver4(metadata: EntityMetadata): String {
         val sb = StringBuilder()
-        val servicePackage = "${metadata.basePackage}.service"
-        val entityPackage = "${metadata.basePackage}.entity"
-        val formPackage = "${metadata.basePackage}.form"
-        val repoPackage = "${metadata.basePackage}.repository"
         val cls = metadata.className
         val parents = metadata.relations.filter { it.type == "ManyToOne" || it.type == "OneToOne" }
         val p1 = parents[0]
@@ -279,23 +264,23 @@ class FormResolverFileWriter {
         val p3 = parents[2]
         val p4 = parents[3]
 
-        sb.appendLine("package $servicePackage")
+        sb.appendLine("package ${metadata.basePackage}")
         sb.appendLine()
-        sb.appendLine("import $entityPackage.$cls")
-        sb.appendLine("import $entityPackage.${p1.targetClassName}")
-        sb.appendLine("import $entityPackage.${p2.targetClassName}")
-        sb.appendLine("import $entityPackage.${p3.targetClassName}")
-        sb.appendLine("import $entityPackage.${p4.targetClassName}")
-        sb.appendLine("import $formPackage.${cls}CreateForm")
-        sb.appendLine("import $formPackage.${cls}UpdateForm")
-        sb.appendLine("import $repoPackage.${cls}Repository")
-        sb.appendLine("import $repoPackage.${p1.targetClassName}Repository")
-        sb.appendLine("import $repoPackage.${p2.targetClassName}Repository")
-        sb.appendLine("import $repoPackage.${p3.targetClassName}Repository")
-        sb.appendLine("import $repoPackage.${p4.targetClassName}Repository")
+        sb.appendLine("import ${p1.targetBasePackage}.${p1.targetClassName}")
+        sb.appendLine("import ${p2.targetBasePackage}.${p2.targetClassName}")
+        sb.appendLine("import ${p3.targetBasePackage}.${p3.targetClassName}")
+        sb.appendLine("import ${p4.targetBasePackage}.${p4.targetClassName}")
+        sb.appendLine("import ${p1.targetBasePackage}.${p1.targetClassName}Repository")
+        sb.appendLine("import ${p2.targetBasePackage}.${p2.targetClassName}Repository")
+        sb.appendLine("import ${p3.targetBasePackage}.${p3.targetClassName}Repository")
+        sb.appendLine("import ${p4.targetBasePackage}.${p4.targetClassName}Repository")
+        sb.appendLine("import arrow.core.raise.result")
         sb.appendLine("import jakarta.validation.Validator")
         sb.appendLine("import org.springframework.stereotype.Component")
+        sb.appendLine("import spring.kraft.core.updateEntity")
+        sb.appendLine("import spring.kraft.core.updateProperty")
         sb.appendLine("import spring.kraft.form.FormResolver4")
+        appendEnumImports(sb, metadata)
         sb.appendLine()
 
         val p1Id = NameConverter.toPropertyName(p1.joinColumnName)
@@ -337,7 +322,7 @@ class FormResolverFileWriter {
                 "p3: ${p3.targetClassName}, p4: ${p4.targetClassName}): Result<$cls> =",
         )
         sb.appendLine(
-            "        Result.success($cls(${buildCreateArgsWithParents(metadata, listOf(p1, p2, p3, p4))}))",
+            "        runCatching { $cls(${buildCreateArgsWithParents(metadata, listOf(p1, p2, p3, p4))}) }",
         )
         sb.appendLine()
         sb.appendLine("    override fun ${cls}UpdateForm.parentId1(): Result<${p1.targetIdType}?> =")
@@ -356,15 +341,50 @@ class FormResolverFileWriter {
             "    override fun ${cls}UpdateForm.update(" +
                 "entity: $cls, " +
                 "parent1: ${p1.targetClassName}?, parent2: ${p2.targetClassName}?, " +
-                "parent3: ${p3.targetClassName}?, parent4: ${p4.targetClassName}?): Result<Unit> {",
+                "parent3: ${p3.targetClassName}?, parent4: ${p4.targetClassName}?): Result<Unit> = result {",
         )
-        sb.appendLine("        // TODO: implement update logic")
-        sb.appendLine("        return Result.success(Unit)")
+        sb.appendLine(
+            buildUpdateBody(metadata, listOf("parent1" to p1, "parent2" to p2, "parent3" to p3, "parent4" to p4)),
+        )
         sb.appendLine("    }")
         sb.appendLine("}")
         sb.appendLine()
 
         return sb.toString()
+    }
+
+    private fun buildUpdateBody(
+        metadata: EntityMetadata,
+        parents: List<Pair<String, ResolvedRelation>> = emptyList(),
+    ): String {
+        val sb = StringBuilder()
+        parents.forEach { (paramName, rel) ->
+            val prop = rel.propertyName
+            sb.appendLine("        entity.$prop.updateEntity($paramName) { entity.$prop = it }.bind()")
+        }
+        metadata.normalColumns.forEach { classified ->
+            val propName = NameConverter.toPropertyName(classified.column.name)
+            val enumType = metadata.enumOverrides[classified.column.name]
+            if (enumType != null) {
+                sb.appendLine(
+                    "        entity.$propName.updateProperty($propName?.let { $enumType.valueOf(it) }) { entity.$propName = it }.bind()",
+                )
+            } else {
+                sb.appendLine("        entity.$propName.updateProperty($propName) { entity.$propName = it }.bind()")
+            }
+        }
+        return sb.toString().trimEnd()
+    }
+
+    private fun appendEnumImports(
+        sb: StringBuilder,
+        metadata: EntityMetadata,
+    ) {
+        if (metadata.enumPackage.isNotEmpty()) {
+            metadata.enumOverrides.values.toSet().sorted().forEach { enumType ->
+                sb.appendLine("import ${metadata.enumPackage}.$enumType")
+            }
+        }
     }
 
     private fun parentIdExpression(
@@ -382,7 +402,12 @@ class FormResolverFileWriter {
         val args = mutableListOf<String>()
         metadata.normalColumns.forEach { classified ->
             val propName = NameConverter.toPropertyName(classified.column.name)
-            args.add("$propName = $propName")
+            val enumType = metadata.enumOverrides[classified.column.name]
+            if (enumType != null) {
+                args.add("$propName = $enumType.valueOf($propName)")
+            } else {
+                args.add("$propName = $propName")
+            }
         }
         return args.joinToString(", ")
     }
@@ -402,7 +427,12 @@ class FormResolverFileWriter {
         }
         metadata.normalColumns.forEach { classified ->
             val propName = NameConverter.toPropertyName(classified.column.name)
-            args.add("$propName = $propName")
+            val enumType = metadata.enumOverrides[classified.column.name]
+            if (enumType != null) {
+                args.add("$propName = $enumType.valueOf($propName)")
+            } else {
+                args.add("$propName = $propName")
+            }
         }
         return args.joinToString(", ")
     }

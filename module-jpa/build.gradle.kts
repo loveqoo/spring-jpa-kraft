@@ -5,7 +5,7 @@ plugins {
 }
 
 dependencies {
-    implementation(project(":module-core"))
+    api(project(":module-core"))
     api(libs.spring.boot.starter.data.jpa)
     api(libs.spring.data.envers)
     runtimeOnly(libs.h2)

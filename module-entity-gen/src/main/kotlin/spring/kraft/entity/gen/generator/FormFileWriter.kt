@@ -3,9 +3,7 @@ package spring.kraft.entity.gen.generator
 class FormFileWriter {
     fun writeCreateForm(metadata: EntityMetadata): String {
         val sb = StringBuilder()
-        val formPackage = "${metadata.basePackage}.form"
-
-        sb.appendLine("package $formPackage")
+        sb.appendLine("package ${metadata.basePackage}")
         sb.appendLine()
 
         val fields = buildCreateFormFields(metadata)
@@ -28,11 +26,15 @@ class FormFileWriter {
 
     fun writeUpdateForm(metadata: EntityMetadata): String {
         val sb = StringBuilder()
-        val formPackage = "${metadata.basePackage}.form"
+        val isLongId = metadata.idType == "Long"
 
-        sb.appendLine("package $formPackage")
+        sb.appendLine("package ${metadata.basePackage}")
         sb.appendLine()
-        sb.appendLine("import spring.kraft.form.UpdateForm")
+        if (isLongId) {
+            sb.appendLine("import spring.kraft.LongUpdateForm")
+        } else {
+            sb.appendLine("import spring.kraft.form.UpdateForm")
+        }
 
         val imports = collectUpdateFormImports(metadata)
         if (imports.isNotEmpty()) {
@@ -47,7 +49,11 @@ class FormFileWriter {
         fields.forEach { field ->
             sb.appendLine("    val ${field.name}: ${field.type}?,")
         }
-        sb.appendLine(") : UpdateForm<${metadata.idType}>")
+        if (isLongId) {
+            sb.appendLine(") : LongUpdateForm")
+        } else {
+            sb.appendLine(") : UpdateForm<${metadata.idType}>")
+        }
         sb.appendLine()
 
         return sb.toString()
@@ -58,7 +64,8 @@ class FormFileWriter {
 
         metadata.normalColumns.forEach { classified ->
             val col = classified.column
-            val kotlinType = ColumnTypeMapper.toKotlinType(col.typeName, col.typeValue)
+            val enumType = metadata.enumOverrides[col.name]
+            val kotlinType = if (enumType != null) "String" else ColumnTypeMapper.toKotlinType(col.typeName, col.typeValue)
             fields.add(FormField(NameConverter.toPropertyName(col.name), kotlinType))
         }
 
@@ -78,7 +85,8 @@ class FormFileWriter {
 
         metadata.normalColumns.forEach { classified ->
             val col = classified.column
-            val kotlinType = ColumnTypeMapper.toKotlinType(col.typeName, col.typeValue)
+            val enumType = metadata.enumOverrides[col.name]
+            val kotlinType = if (enumType != null) "String" else ColumnTypeMapper.toKotlinType(col.typeName, col.typeValue)
             fields.add(FormField(NameConverter.toPropertyName(col.name), kotlinType))
         }
 
@@ -95,8 +103,10 @@ class FormFileWriter {
     private fun collectCreateFormImports(metadata: EntityMetadata): Set<String> {
         val imports = mutableSetOf<String>()
         metadata.normalColumns.forEach { classified ->
-            val imp = ColumnTypeMapper.requiredImport(classified.column.typeName, classified.column.typeValue)
-            if (imp != null) imports.add(imp)
+            if (classified.column.name !in metadata.enumOverrides) {
+                val imp = ColumnTypeMapper.requiredImport(classified.column.typeName, classified.column.typeValue)
+                if (imp != null) imports.add(imp)
+            }
         }
         return imports
     }
@@ -104,8 +114,10 @@ class FormFileWriter {
     private fun collectUpdateFormImports(metadata: EntityMetadata): Set<String> {
         val imports = mutableSetOf<String>()
         metadata.normalColumns.forEach { classified ->
-            val imp = ColumnTypeMapper.requiredImport(classified.column.typeName, classified.column.typeValue)
-            if (imp != null) imports.add(imp)
+            if (classified.column.name !in metadata.enumOverrides) {
+                val imp = ColumnTypeMapper.requiredImport(classified.column.typeName, classified.column.typeValue)
+                if (imp != null) imports.add(imp)
+            }
         }
         return imports
     }

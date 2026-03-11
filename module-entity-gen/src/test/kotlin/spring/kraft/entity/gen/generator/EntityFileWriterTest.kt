@@ -55,7 +55,7 @@ class EntityFileWriterTest {
             EntityMetadata(
                 tableName = "products",
                 className = "Product",
-                packageName = "com.example.entity",
+                packageName = "com.example",
                 basePackage = "com.example",
                 isAggregateRoot = false,
                 classifiedColumns = classified,
@@ -65,18 +65,18 @@ class EntityFileWriterTest {
 
         val result = writer.write(metadata)
 
-        assertContains(result, "package com.example.entity")
-        assertContains(result, "import spring.kraft.jpa.BaseEntity")
+        assertContains(result, "package com.example")
+        assertContains(result, "import spring.kraft.jpa.LongBaseEntity")
         assertContains(result, "import spring.kraft.jpa.IdentityColumn")
         assertContains(result, "import java.math.BigDecimal")
         assertContains(result, "@Entity")
         assertContains(result, "@Table(name = \"products\")")
         assertContains(result, "class Product(")
-        assertContains(result, ": BaseEntity<Long>()")
+        assertContains(result, ": LongBaseEntity()")
         assertContains(result, "@get:IdentityColumn")
         assertContains(result, "@Column(name = \"name\", nullable = false, unique = true, length = 255)")
-        assertContains(result, "val name: String")
-        assertContains(result, "val price: BigDecimal")
+        assertContains(result, "var name: String")
+        assertContains(result, "var price: BigDecimal")
         assertContains(result, "@Id")
         assertContains(result, "@GeneratedValue(strategy = GenerationType.IDENTITY)")
         assertContains(result, "override var id: Long? = null")
@@ -124,7 +124,7 @@ class EntityFileWriterTest {
             EntityMetadata(
                 tableName = "orders",
                 className = "Order",
-                packageName = "com.example.order.entity",
+                packageName = "com.example.order",
                 basePackage = "com.example.order",
                 isAggregateRoot = true,
                 classifiedColumns = classified,
@@ -134,11 +134,11 @@ class EntityFileWriterTest {
 
         val result = writer.write(metadata)
 
-        assertContains(result, "import spring.kraft.jpa.AggregateRootBaseEntity")
-        assertContains(result, ": AggregateRootBaseEntity<Long, Order>()")
+        assertContains(result, "import spring.kraft.jpa.LongAggregateRootBaseEntity")
+        assertContains(result, ": LongAggregateRootBaseEntity<Order>()")
         assertContains(result, "@get:IdentityColumn")
-        assertContains(result, "val name: String")
-        assertContains(result, "val status: String")
+        assertContains(result, "var name: String")
+        assertContains(result, "var status: String")
         assertContains(
             result,
             "@OneToMany(mappedBy = \"order\", cascade = [CascadeType.ALL], orphanRemoval = true)",
@@ -186,7 +186,7 @@ class EntityFileWriterTest {
             EntityMetadata(
                 tableName = "order_items",
                 className = "OrderItem",
-                packageName = "com.example.order.entity",
+                packageName = "com.example.order",
                 basePackage = "com.example.order",
                 isAggregateRoot = false,
                 classifiedColumns = classified,
@@ -197,12 +197,12 @@ class EntityFileWriterTest {
         val result = writer.write(metadata)
 
         assertContains(result, "class OrderItem(")
-        assertContains(result, ": BaseEntity<Long>()")
+        assertContains(result, ": LongBaseEntity()")
         assertContains(result, "@ManyToOne(fetch = FetchType.LAZY)")
         assertContains(result, "@JoinColumn(name = \"order_id\", nullable = false)")
-        assertContains(result, "val order: Order")
-        assertContains(result, "val productName: String")
-        assertContains(result, "val quantity: Int")
+        assertContains(result, "var order: Order")
+        assertContains(result, "var productName: String")
+        assertContains(result, "var quantity: Int")
         // order_id should not appear as a regular column
         assertFalse(result.contains("val orderId"))
     }
@@ -239,7 +239,7 @@ class EntityFileWriterTest {
             EntityMetadata(
                 tableName = "users",
                 className = "User",
-                packageName = "com.example.entity",
+                packageName = "com.example",
                 basePackage = "com.example",
                 isAggregateRoot = true,
                 classifiedColumns = classified,
@@ -279,7 +279,7 @@ class EntityFileWriterTest {
             EntityMetadata(
                 tableName = "test",
                 className = "Test",
-                packageName = "com.example.entity",
+                packageName = "com.example",
                 basePackage = "com.example",
                 isAggregateRoot = false,
                 classifiedColumns = classified,

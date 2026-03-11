@@ -3,6 +3,7 @@ package spring.kraft.entity.gen.generator
 import spring.kraft.entity.gen.TableDef
 import spring.kraft.entity.gen.TableSchema
 import spring.kraft.entity.gen.config.AggregateConfig
+import spring.kraft.entity.gen.config.ColumnOverride
 import spring.kraft.entity.gen.config.IdStrategy
 import spring.kraft.entity.gen.config.RelationDefinition
 import spring.kraft.entity.gen.config.RelationType
@@ -33,10 +34,11 @@ class EntityGenerator {
         val tableMap = schema.tables.associateBy { it.name }
         validateConfig(config, tableMap)
 
-        val entityPackage = "${config.basePackage}.entity"
         val rootTables = config.aggregates.map { it.root }.toSet()
         val relationsByTable = buildRelationsByTable(config)
         val idStrategyByTable = buildIdStrategyByTable(config)
+        val enumOverridesByTable = buildEnumOverridesByTable(config)
+        val basePackageByTable = buildBasePackageByTable(config, schema)
 
         return schema.tables.map { table ->
             val isAggregateRoot = table.name in rootTables
@@ -48,23 +50,57 @@ class EntityGenerator {
             val joinColumns = forwardRels.map { it.joinColumn }.toSet()
             val classified = ColumnClassifier.classify(table, isAggregateRoot, joinColumns)
             val className = NameConverter.toClassName(table.name)
+            val entityBasePackage = basePackageByTable.getValue(table.name)
 
-            val forwardRelations = buildForwardRelations(forwardRels, table, tableMap)
-            val reverseRelations = buildReverseRelations(reverseRels, table.name, relationsByTable)
+            val forwardRelations = buildForwardRelations(forwardRels, table, tableMap, basePackageByTable)
+            val reverseRelations =
+                buildReverseRelations(reverseRels, table.name, relationsByTable, basePackageByTable)
+
+            val tableEnumOverrides = enumOverridesByTable[table.name] ?: emptyMap()
 
             EntityMetadata(
                 tableName = table.name,
                 className = className,
-                packageName = entityPackage,
-                basePackage = config.basePackage,
+                packageName = entityBasePackage,
+                basePackage = entityBasePackage,
                 isAggregateRoot = isAggregateRoot,
                 classifiedColumns = classified,
                 relations = forwardRelations,
                 reverseRelations = reverseRelations,
                 idStrategy = idStrategyByTable[table.name] ?: config.idStrategy,
+                enumOverrides = tableEnumOverrides,
+                enumPackage = if (tableEnumOverrides.isNotEmpty()) config.basePackage else "",
             )
         }
     }
+
+    private fun buildBasePackageByTable(
+        config: AggregateConfig,
+        schema: TableSchema,
+    ): Map<String, String> {
+        val map = mutableMapOf<String, String>()
+        val tablesInAggregates = mutableSetOf<String>()
+
+        config.aggregates.forEach { agg ->
+            map[agg.root] = "${config.basePackage}.${toPackageName(agg.root)}"
+            tablesInAggregates.add(agg.root)
+
+            agg.entities.forEach { entity ->
+                map[entity.table] = "${config.basePackage}.${toPackageName(entity.table)}"
+                tablesInAggregates.add(entity.table)
+            }
+        }
+
+        schema.tables
+            .filter { it.name !in tablesInAggregates }
+            .forEach { table ->
+                map[table.name] = "${config.basePackage}.${toPackageName(table.name)}"
+            }
+
+        return map
+    }
+
+    private fun toPackageName(tableName: String): String = NameConverter.toClassName(tableName).lowercase()
 
     private fun classifyForward(
         rels: List<RelationDefinition>,
@@ -171,10 +207,34 @@ class EntityGenerator {
         return map
     }
 
+    private fun buildEnumOverridesByTable(config: AggregateConfig): Map<String, Map<String, String>> {
+        val map = mutableMapOf<String, Map<String, String>>()
+        config.aggregates.forEach { agg ->
+            val rootOverrides = toEnumOverrideMap(agg.columnOverrides)
+            if (rootOverrides.isNotEmpty()) {
+                map[agg.root] = rootOverrides
+            }
+            agg.entities.forEach { entity ->
+                val entityOverrides = toEnumOverrideMap(entity.columnOverrides)
+                if (entityOverrides.isNotEmpty()) {
+                    map[entity.table] = entityOverrides
+                }
+            }
+        }
+        return map
+    }
+
+    private fun toEnumOverrideMap(columnOverrides: Map<String, ColumnOverride>): Map<String, String> =
+        columnOverrides
+            .mapNotNull { (colName, override) ->
+                override.enumType?.let { colName to it }
+            }.toMap()
+
     private fun buildForwardRelations(
         rels: List<RelationDefinition>,
         sourceTable: TableDef,
         tableMap: Map<String, TableDef>,
+        basePackageByTable: Map<String, String>,
     ): List<ResolvedRelation> =
         rels.map { rel ->
             val targetClassName = NameConverter.toClassName(rel.target)
@@ -195,6 +255,7 @@ class EntityGenerator {
                 mappedBy = null,
                 nullable = joinCol?.notNull?.not() ?: false,
                 targetIdType = targetIdType,
+                targetBasePackage = basePackageByTable[rel.target] ?: "",
             )
         }
 
@@ -202,6 +263,7 @@ class EntityGenerator {
         rels: List<RelationDefinition>,
         ownerTableName: String,
         relationsByTable: Map<String, List<RelationDefinition>>,
+        basePackageByTable: Map<String, String>,
     ): List<ResolvedRelation> =
         rels.map { rel ->
             val targetClassName = NameConverter.toClassName(rel.target)
@@ -230,6 +292,7 @@ class EntityGenerator {
                 propertyName = propertyName,
                 mappedBy = mappedBy,
                 nullable = false,
+                targetBasePackage = basePackageByTable[rel.target] ?: "",
             )
         }
 

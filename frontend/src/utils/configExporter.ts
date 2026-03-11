@@ -2,6 +2,7 @@ import type { Edge } from '@xyflow/react';
 import type {
   AggregateConfig,
   AggregateDefinition,
+  ColumnOverride,
   EntityDefinition,
   IdStrategy,
   RelationDefinition,
@@ -19,6 +20,8 @@ export interface AggregateState {
   edges: Edge[];
   aggregateAssignments: Record<string, string>;
   schema: TableSchema;
+  enumDefinitions: Record<string, string[]>;
+  columnOverrides: Record<string, Record<string, ColumnOverride>>;
 }
 
 function getSourceRel(edge: Edge): RelationType {
@@ -34,7 +37,7 @@ function getJoinColumn(edge: Edge): string {
 }
 
 export function buildAggregateConfig(state: AggregateState): AggregateConfig {
-  const { basePackage, globalIdStrategy, globalEngine, globalCharset, roots, nodeIdStrategies, edges, aggregateAssignments, schema } = state;
+  const { basePackage, globalIdStrategy, globalEngine, globalCharset, roots, nodeIdStrategies, edges, aggregateAssignments, schema, enumDefinitions, columnOverrides } = state;
 
   const confirmedEdges = edges.filter((e) => e.data?.confirmed !== false);
   const aggregates: AggregateDefinition[] = [];
@@ -50,11 +53,16 @@ export function buildAggregateConfig(state: AggregateState): AggregateConfig {
 
     // Pre-create entity definitions
     for (const name of entityNames) {
-      entityMap.set(name, {
+      const entityDef: EntityDefinition = {
         table: name,
         relations: [],
         idStrategy: nodeIdStrategies[name] ?? null,
-      });
+      };
+      const entityOverrides = columnOverrides[name];
+      if (entityOverrides && Object.keys(entityOverrides).length > 0) {
+        entityDef.columnOverrides = entityOverrides;
+      }
+      entityMap.set(name, entityDef);
     }
 
     // Process edges involving the root or its entities
@@ -110,15 +118,20 @@ export function buildAggregateConfig(state: AggregateState): AggregateConfig {
       }
     }
 
-    aggregates.push({
+    const aggDef: AggregateDefinition = {
       root,
       relations: rootRelations,
       entities: Array.from(entityMap.values()),
       idStrategy: nodeIdStrategies[root] ?? null,
-    });
+    };
+    const rootOverrides = columnOverrides[root];
+    if (rootOverrides && Object.keys(rootOverrides).length > 0) {
+      aggDef.columnOverrides = rootOverrides;
+    }
+    aggregates.push(aggDef);
   }
 
-  return {
+  const result: AggregateConfig = {
     basePackage,
     aggregates,
     idStrategy: globalIdStrategy,
@@ -126,4 +139,8 @@ export function buildAggregateConfig(state: AggregateState): AggregateConfig {
     globalCharset,
     tableSchema: schema,
   };
+  if (Object.keys(enumDefinitions).length > 0) {
+    result.enums = enumDefinitions;
+  }
+  return result;
 }

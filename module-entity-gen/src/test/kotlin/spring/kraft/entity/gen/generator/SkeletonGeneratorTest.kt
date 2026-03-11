@@ -73,35 +73,40 @@ class SkeletonGeneratorTest {
         }
         """.trimIndent()
 
+    // All files for an entity go into a single flat package:
+    // com/example/order/{entityName}/ClassName.kt
+
     @Test
     fun `generates all files in correct directories`() {
         val outputDir = createTempDir()
         try {
             generate(baseSql, configJson, outputDir)
 
-            val base = "com/example/order"
-            assertTrue(File(outputDir, "$base/entity/Order.kt").exists())
-            assertTrue(File(outputDir, "$base/repository/OrderRepository.kt").exists())
-            assertTrue(File(outputDir, "$base/form/OrderCreateForm.kt").exists())
-            assertTrue(File(outputDir, "$base/form/OrderUpdateForm.kt").exists())
-            assertTrue(File(outputDir, "$base/dto/OrderDto.kt").exists())
-            assertTrue(File(outputDir, "$base/service/OrderFormResolver.kt").exists())
-            assertTrue(File(outputDir, "$base/service/OrderSearchFields.kt").exists())
-            assertTrue(File(outputDir, "$base/service/OrderService.kt").exists())
-            assertTrue(File(outputDir, "$base/controller/OrderController.kt").exists())
+            val root = "com/example/order/order"
+            assertTrue(File(outputDir, "$root/Order.kt").exists())
+            assertTrue(File(outputDir, "$root/OrderRepository.kt").exists())
+            assertTrue(File(outputDir, "$root/OrderCreateForm.kt").exists())
+            assertTrue(File(outputDir, "$root/OrderUpdateForm.kt").exists())
+            assertTrue(File(outputDir, "$root/OrderDto.kt").exists())
+            assertTrue(File(outputDir, "$root/OrderFormResolver.kt").exists())
+            assertTrue(File(outputDir, "$root/OrderSearchFields.kt").exists())
+            assertTrue(File(outputDir, "$root/OrderService.kt").exists())
+            assertTrue(File(outputDir, "$root/OrderController.kt").exists())
 
-            assertTrue(File(outputDir, "$base/entity/OrderItem.kt").exists())
-            assertTrue(File(outputDir, "$base/repository/OrderItemRepository.kt").exists())
-            assertTrue(File(outputDir, "$base/form/OrderItemCreateForm.kt").exists())
-            assertTrue(File(outputDir, "$base/form/OrderItemUpdateForm.kt").exists())
-            assertTrue(File(outputDir, "$base/dto/OrderItemDto.kt").exists())
-            assertTrue(File(outputDir, "$base/service/OrderItemFormResolver.kt").exists())
-            assertTrue(File(outputDir, "$base/service/OrderItemSearchFields.kt").exists())
-            assertTrue(File(outputDir, "$base/service/OrderItemService.kt").exists())
-            assertTrue(File(outputDir, "$base/controller/OrderItemController.kt").exists())
+            val child = "com/example/order/orderitem"
+            assertTrue(File(outputDir, "$child/OrderItem.kt").exists())
+            assertTrue(File(outputDir, "$child/OrderItemRepository.kt").exists())
+            assertTrue(File(outputDir, "$child/OrderItemCreateForm.kt").exists())
+            assertTrue(File(outputDir, "$child/OrderItemUpdateForm.kt").exists())
+            assertTrue(File(outputDir, "$child/OrderItemDto.kt").exists())
+            assertTrue(File(outputDir, "$child/OrderItemFormResolver.kt").exists())
+            assertTrue(File(outputDir, "$child/OrderItemSearchFields.kt").exists())
+            assertTrue(File(outputDir, "$child/OrderItemService.kt").exists())
+            assertTrue(File(outputDir, "$child/OrderItemController.kt").exists())
 
-            assertTrue(File(outputDir, "$base/entity/Product.kt").exists())
-            assertTrue(File(outputDir, "$base/repository/ProductRepository.kt").exists())
+            val standalone = "com/example/order/product"
+            assertTrue(File(outputDir, "$standalone/Product.kt").exists())
+            assertTrue(File(outputDir, "$standalone/ProductRepository.kt").exists())
         } finally {
             outputDir.deleteRecursively()
         }
@@ -112,10 +117,9 @@ class SkeletonGeneratorTest {
         val outputDir = createTempDir()
         try {
             generate(baseSql, configJson, outputDir)
-            val source = readFile(outputDir, "com/example/order/repository/OrderRepository.kt")
+            val source = readFile(outputDir, "com/example/order/order/OrderRepository.kt")
 
-            assertContains(source, "package com.example.order.repository")
-            assertContains(source, "import com.example.order.entity.Order")
+            assertContains(source, "package com.example.order.order")
             assertContains(source, "JpaRepository<Order, Long>")
             assertContains(source, "JpaSpecificationExecutor<Order>")
         } finally {
@@ -128,9 +132,9 @@ class SkeletonGeneratorTest {
         val outputDir = createTempDir()
         try {
             generate(baseSql, configJson, outputDir)
-            val source = readFile(outputDir, "com/example/order/form/OrderCreateForm.kt")
+            val source = readFile(outputDir, "com/example/order/order/OrderCreateForm.kt")
 
-            assertContains(source, "package com.example.order.form")
+            assertContains(source, "package com.example.order.order")
             assertContains(source, "data class OrderCreateForm(")
             assertContains(source, "val name: String")
             assertContains(source, "val status: String")
@@ -144,7 +148,7 @@ class SkeletonGeneratorTest {
         val outputDir = createTempDir()
         try {
             generate(baseSql, configJson, outputDir)
-            val source = readFile(outputDir, "com/example/order/form/OrderItemCreateForm.kt")
+            val source = readFile(outputDir, "com/example/order/orderitem/OrderItemCreateForm.kt")
 
             assertContains(source, "val orderId: Long")
             assertContains(source, "val productName: String")
@@ -160,13 +164,13 @@ class SkeletonGeneratorTest {
         val outputDir = createTempDir()
         try {
             generate(baseSql, configJson, outputDir)
-            val source = readFile(outputDir, "com/example/order/form/OrderUpdateForm.kt")
+            val source = readFile(outputDir, "com/example/order/order/OrderUpdateForm.kt")
 
-            assertContains(source, "import spring.kraft.form.UpdateForm")
+            assertContains(source, "import spring.kraft.LongUpdateForm")
             assertContains(source, "override val id: Long")
             assertContains(source, "val name: String?")
             assertContains(source, "val status: String?")
-            assertContains(source, ") : UpdateForm<Long>")
+            assertContains(source, ") : LongUpdateForm")
         } finally {
             outputDir.deleteRecursively()
         }
@@ -177,9 +181,9 @@ class SkeletonGeneratorTest {
         val outputDir = createTempDir()
         try {
             generate(baseSql, configJson, outputDir)
-            val source = readFile(outputDir, "com/example/order/dto/OrderDto.kt")
+            val source = readFile(outputDir, "com/example/order/order/OrderDto.kt")
 
-            assertContains(source, "package com.example.order.dto")
+            assertContains(source, "package com.example.order.order")
             assertContains(source, "import java.io.Serializable")
             assertContains(source, "data class OrderDto(")
             assertContains(source, "val id: Long")
@@ -196,14 +200,14 @@ class SkeletonGeneratorTest {
         val outputDir = createTempDir()
         try {
             generate(baseSql, configJson, outputDir)
-            val source = readFile(outputDir, "com/example/order/service/OrderFormResolver.kt")
+            val source = readFile(outputDir, "com/example/order/order/OrderFormResolver.kt")
 
-            assertContains(source, "import spring.kraft.form.FormResolver0")
+            assertContains(source, "import spring.kraft.LongFormResolver0")
             assertContains(source, "@Component")
             assertContains(source, "class OrderFormResolver(")
             assertContains(source, "override val repo: OrderRepository")
             assertContains(source, "override val validator: Validator")
-            assertContains(source, ": FormResolver0<Long, Order, OrderCreateForm, OrderUpdateForm>()")
+            assertContains(source, ": LongFormResolver0<Order, OrderCreateForm, OrderUpdateForm>()")
             assertContains(source, "override fun OrderCreateForm.createEntity(): Result<Order>")
             assertContains(source, "override fun OrderUpdateForm.update(entity: Order): Result<Unit>")
         } finally {
@@ -212,13 +216,15 @@ class SkeletonGeneratorTest {
     }
 
     @Test
-    fun `child entity uses FormResolver1 with parent`() {
+    fun `child entity uses FormResolver1 with cross-package parent import`() {
         val outputDir = createTempDir()
         try {
             generate(baseSql, configJson, outputDir)
-            val source = readFile(outputDir, "com/example/order/service/OrderItemFormResolver.kt")
+            val source = readFile(outputDir, "com/example/order/orderitem/OrderItemFormResolver.kt")
 
             assertContains(source, "import spring.kraft.form.FormResolver1")
+            assertContains(source, "import com.example.order.order.Order")
+            assertContains(source, "import com.example.order.order.OrderRepository")
             assertContains(source, "override val repo: OrderItemRepository")
             assertContains(source, "override val repo1: OrderRepository")
             assertContains(source, ": FormResolver1<Long, OrderItem, OrderItemCreateForm, OrderItemUpdateForm, Long, Order>()")
@@ -236,14 +242,14 @@ class SkeletonGeneratorTest {
         val outputDir = createTempDir()
         try {
             generate(baseSql, configJson, outputDir)
-            val source = readFile(outputDir, "com/example/order/service/OrderService.kt")
+            val source = readFile(outputDir, "com/example/order/order/OrderService.kt")
 
             assertContains(source, "@Service")
             assertContains(source, "class OrderService(")
             assertContains(source, "override val repo: OrderRepository")
-            assertContains(source, "override val formResolver: FormResolver<Long, Order, OrderCreateForm, OrderUpdateForm>")
+            assertContains(source, "override val formResolver: LongFormResolver<Order, OrderCreateForm, OrderUpdateForm>")
             assertContains(source, "override val searchFieldProvider: SearchFieldProvider<Order>")
-            assertContains(source, ": SearchableEntityService<Long, Order, OrderRepository, OrderCreateForm, OrderUpdateForm>")
+            assertContains(source, ": LongSearchableEntityService<Order, OrderRepository, OrderCreateForm, OrderUpdateForm>")
             assertContains(source, "override val tableName: String = \"orders\"")
         } finally {
             outputDir.deleteRecursively()
@@ -255,7 +261,7 @@ class SkeletonGeneratorTest {
         val outputDir = createTempDir()
         try {
             generate(baseSql, configJson, outputDir)
-            val source = readFile(outputDir, "com/example/order/service/OrderSearchFields.kt")
+            val source = readFile(outputDir, "com/example/order/order/OrderSearchFields.kt")
 
             assertContains(source, "@Component")
             assertContains(source, "class OrderSearchFields : SearchFieldProvider<Order>")
@@ -274,23 +280,43 @@ class SkeletonGeneratorTest {
         val outputDir = createTempDir()
         try {
             generate(baseSql, configJson, outputDir)
-            val source = readFile(outputDir, "com/example/order/controller/OrderController.kt")
+            val source = readFile(outputDir, "com/example/order/order/OrderController.kt")
 
+            assertContains(source, "import io.swagger.v3.oas.annotations.Operation")
+            assertContains(source, "import io.swagger.v3.oas.annotations.tags.Tag")
+            assertContains(source, "@Tag(name = \"Orders\")")
             assertContains(source, "@RestController")
             assertContains(source, "@RequestMapping(\"/api/orders\")")
             assertContains(source, "class OrderController(")
             assertContains(source, "override val service: OrderService")
             assertContains(
                 source,
-                "SearchableEntityController<Long, Order, OrderRepository, " +
+                "LongSearchableEntityController<Order, OrderRepository, " +
                     "OrderService, OrderDto, OrderCreateForm, OrderUpdateForm>()",
             )
             assertContains(source, "override val tableName: String = \"orders\"")
             assertContains(source, "override fun toReadDto(entity: Order): OrderDto")
-            assertContains(source, "override fun toCreateDto(entity: Order): MutationResponse")
-            assertContains(source, "MutationResponse.create(entity.id!!, tableName)")
-            assertContains(source, "override fun toUpdateDto(entity: Order): MutationResponse")
-            assertContains(source, "override fun toDeleteDto(id: Long): MutationResponse")
+
+            // Swagger @Operation + HTTP mappings
+            assertContains(source, "@Operation(summary = \"Orders 검색\")")
+            assertContains(source, "@GetMapping\n")
+            assertContains(source, "override fun search(")
+
+            assertContains(source, "@Operation(summary = \"Orders 단건 조회\")")
+            assertContains(source, "@GetMapping(\"/{id}\")")
+            assertContains(source, "override fun getOne(@PathVariable id: Long)")
+
+            assertContains(source, "@Operation(summary = \"Orders 생성\")")
+            assertContains(source, "@PostMapping")
+            assertContains(source, "@RequestBody request: OrderCreateForm")
+
+            assertContains(source, "@Operation(summary = \"Orders 수정\")")
+            assertContains(source, "@PutMapping")
+            assertContains(source, "@RequestBody request: OrderUpdateForm")
+
+            assertContains(source, "@Operation(summary = \"Orders 삭제\")")
+            assertContains(source, "@DeleteMapping(\"/{id}\")")
+            assertContains(source, "override fun delete(@PathVariable id: Long)")
         } finally {
             outputDir.deleteRecursively()
         }
@@ -348,9 +374,13 @@ class SkeletonGeneratorTest {
         val outputDir = createTempDir()
         try {
             generate(sql, config, outputDir)
-            val source = readFile(outputDir, "com/example/shop/service/OrderItemFormResolver.kt")
+            val source = readFile(outputDir, "com/example/shop/orderitem/OrderItemFormResolver.kt")
 
             assertContains(source, "import spring.kraft.form.FormResolver2")
+            assertContains(source, "import com.example.shop.order.Order")
+            assertContains(source, "import com.example.shop.product.Product")
+            assertContains(source, "import com.example.shop.order.OrderRepository")
+            assertContains(source, "import com.example.shop.product.ProductRepository")
             assertContains(source, "override val repo1: OrderRepository")
             assertContains(source, "override val repo2: ProductRepository")
             assertContains(source, "FormResolver2<Long, OrderItem, OrderItemCreateForm, OrderItemUpdateForm, Long, Order, Long, Product>")
@@ -367,7 +397,7 @@ class SkeletonGeneratorTest {
         val outputDir = createTempDir()
         try {
             generate(baseSql, configJson, outputDir)
-            val source = readFile(outputDir, "com/example/order/controller/OrderItemController.kt")
+            val source = readFile(outputDir, "com/example/order/orderitem/OrderItemController.kt")
 
             assertContains(source, "override fun toReadDto(entity: OrderItem): OrderItemDto = OrderItemDto(")
             assertContains(source, "id = entity.id!!")
@@ -384,7 +414,7 @@ class SkeletonGeneratorTest {
         val outputDir = createTempDir()
         try {
             generate(baseSql, configJson, outputDir)
-            val source = readFile(outputDir, "com/example/order/dto/OrderItemDto.kt")
+            val source = readFile(outputDir, "com/example/order/orderitem/OrderItemDto.kt")
 
             assertContains(source, "import java.math.BigDecimal")
             assertContains(source, "val price: BigDecimal")
@@ -442,14 +472,14 @@ class SkeletonGeneratorTest {
         try {
             generate(sql, config, outputDir)
 
-            val createForm = readFile(outputDir, "com/example/catalog/form/ItemCreateForm.kt")
+            val createForm = readFile(outputDir, "com/example/catalog/item/ItemCreateForm.kt")
             assertContains(createForm, "val categoryId: String")
 
-            val updateForm = readFile(outputDir, "com/example/catalog/form/ItemUpdateForm.kt")
+            val updateForm = readFile(outputDir, "com/example/catalog/item/ItemUpdateForm.kt")
             assertContains(updateForm, "override val id: Long")
             assertContains(updateForm, "val categoryId: String?")
 
-            val resolver = readFile(outputDir, "com/example/catalog/service/ItemFormResolver.kt")
+            val resolver = readFile(outputDir, "com/example/catalog/item/ItemFormResolver.kt")
             assertContains(
                 resolver,
                 "FormResolver1<Long, Item, ItemCreateForm, ItemUpdateForm, String, Category>",
@@ -457,7 +487,7 @@ class SkeletonGeneratorTest {
             assertContains(resolver, "override fun ItemCreateForm.parentId(): Result<String>")
             assertContains(resolver, "override fun ItemUpdateForm.parentId(): Result<String?>")
 
-            val repo = readFile(outputDir, "com/example/catalog/repository/CategoryRepository.kt")
+            val repo = readFile(outputDir, "com/example/catalog/category/CategoryRepository.kt")
             assertContains(repo, "JpaRepository<Category, String>")
         } finally {
             outputDir.deleteRecursively()
@@ -512,10 +542,10 @@ class SkeletonGeneratorTest {
         try {
             generate(sql, config, outputDir)
 
-            val createForm = readFile(outputDir, "com/example/order/form/OrderItemCreateForm.kt")
+            val createForm = readFile(outputDir, "com/example/order/orderitem/OrderItemCreateForm.kt")
             assertContains(createForm, "val orderId: Long?")
 
-            val resolver = readFile(outputDir, "com/example/order/service/OrderItemFormResolver.kt")
+            val resolver = readFile(outputDir, "com/example/order/orderitem/OrderItemFormResolver.kt")
             assertContains(resolver, "override fun OrderItemCreateForm.parentId(): Result<Long>")
             assertContains(resolver, "orderId?.let { Result.success(it) }")
             assertContains(resolver, "Result.failure(IllegalArgumentException(\"orderId must not be null\"))")

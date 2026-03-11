@@ -13,6 +13,8 @@ data class EntityMetadata(
     val relations: List<ResolvedRelation>,
     val reverseRelations: List<ResolvedRelation>,
     val idStrategy: IdStrategy = IdStrategy.IDENTITY,
+    val enumOverrides: Map<String, String> = emptyMap(),
+    val enumPackage: String = "",
 ) {
     val idType: String
         get() {
@@ -39,6 +41,7 @@ data class ResolvedRelation(
     val mappedBy: String?,
     val nullable: Boolean,
     val targetIdType: String = "Long",
+    val targetBasePackage: String = "",
 )
 
 class EntityFileWriter {
@@ -79,10 +82,19 @@ class EntityFileWriter {
         val imports = mutableSetOf<String>()
         imports.add("jakarta.persistence.*")
 
+        val isLongId = metadata.idType == "Long"
         if (metadata.isAggregateRoot) {
-            imports.add("spring.kraft.jpa.AggregateRootBaseEntity")
+            if (isLongId) {
+                imports.add("spring.kraft.jpa.LongAggregateRootBaseEntity")
+            } else {
+                imports.add("spring.kraft.jpa.AggregateRootBaseEntity")
+            }
         } else {
-            imports.add("spring.kraft.jpa.BaseEntity")
+            if (isLongId) {
+                imports.add("spring.kraft.jpa.LongBaseEntity")
+            } else {
+                imports.add("spring.kraft.jpa.BaseEntity")
+            }
         }
 
         val hasIdentityColumn = metadata.classifiedColumns.any { it.isIdentityColumn }
@@ -90,16 +102,35 @@ class EntityFileWriter {
             imports.add("spring.kraft.jpa.IdentityColumn")
         }
 
+        metadata.relations.forEach { rel ->
+            if (rel.targetBasePackage.isNotEmpty()) {
+                imports.add("${rel.targetBasePackage}.${rel.targetClassName}")
+            }
+        }
+        metadata.reverseRelations.forEach { rel ->
+            if (rel.targetBasePackage.isNotEmpty()) {
+                imports.add("${rel.targetBasePackage}.${rel.targetClassName}")
+            }
+        }
+
         metadata.classifiedColumns
             .filter { it.role == ColumnRole.NORMAL || it.role == ColumnRole.PK }
             .forEach { classified ->
-                val imp =
-                    ColumnTypeMapper.requiredImport(
-                        classified.column.typeName,
-                        classified.column.typeValue,
-                    )
-                if (imp != null) imports.add(imp)
+                if (classified.column.name !in metadata.enumOverrides) {
+                    val imp =
+                        ColumnTypeMapper.requiredImport(
+                            classified.column.typeName,
+                            classified.column.typeValue,
+                        )
+                    if (imp != null) imports.add(imp)
+                }
             }
+
+        if (metadata.enumPackage.isNotEmpty()) {
+            metadata.enumOverrides.values.toSet().forEach { enumType ->
+                imports.add("${metadata.enumPackage}.$enumType")
+            }
+        }
 
         return imports
     }
@@ -111,8 +142,9 @@ class EntityFileWriter {
             .filter { it.role == ColumnRole.NORMAL }
             .forEach { classified ->
                 val col = classified.column
-                val kotlinType = ColumnTypeMapper.toKotlinType(col.typeName, col.typeValue)
-                val annotations = buildColumnAnnotations(classified)
+                val enumType = metadata.enumOverrides[col.name]
+                val kotlinType = enumType ?: ColumnTypeMapper.toKotlinType(col.typeName, col.typeValue)
+                val annotations = buildColumnAnnotations(classified, enumType)
                 params.add(buildConstructorParam(annotations, col.name, kotlinType))
             }
 
@@ -125,10 +157,16 @@ class EntityFileWriter {
         return params
     }
 
-    private fun buildColumnAnnotations(classified: ClassifiedColumn): List<String> {
+    private fun buildColumnAnnotations(
+        classified: ClassifiedColumn,
+        enumType: String? = null,
+    ): List<String> {
         val annotations = mutableListOf<String>()
         if (classified.isIdentityColumn) {
             annotations.add("    @get:IdentityColumn")
+        }
+        if (enumType != null) {
+            annotations.add("    @Enumerated(EnumType.STRING)")
         }
         annotations.add("    ${buildColumnAnnotation(classified.column)}")
         return annotations
@@ -142,7 +180,7 @@ class EntityFileWriter {
         val sb = StringBuilder()
         annotations.forEach { sb.appendLine(it) }
         val propertyName = NameConverter.toPropertyName(columnName)
-        sb.append("    val $propertyName: $kotlinType")
+        sb.append("    var $propertyName: $kotlinType")
         return sb.toString()
     }
 
@@ -153,22 +191,25 @@ class EntityFileWriter {
         sb.appendLine("    @${rel.type}(fetch = $fetchType)")
         sb.appendLine("    @JoinColumn(name = \"${rel.joinColumnName}\"$nullable)")
         val typeStr = if (rel.nullable) "${rel.targetClassName}?" else rel.targetClassName
-        sb.append("    val ${rel.propertyName}: $typeStr")
+        sb.append("    var ${rel.propertyName}: $typeStr")
         return sb.toString()
     }
 
     private fun buildSuperClass(metadata: EntityMetadata): String {
-        val pkColumn = metadata.classifiedColumns.firstOrNull { it.role == ColumnRole.PK }
-        val idType =
-            if (pkColumn != null) {
-                ColumnTypeMapper.toKotlinType(pkColumn.column.typeName, pkColumn.column.typeValue)
-            } else {
-                "Long"
-            }
+        val idType = metadata.idType
+        val isLongId = idType == "Long"
         return if (metadata.isAggregateRoot) {
-            "AggregateRootBaseEntity<$idType, ${metadata.className}>()"
+            if (isLongId) {
+                "LongAggregateRootBaseEntity<${metadata.className}>()"
+            } else {
+                "AggregateRootBaseEntity<$idType, ${metadata.className}>()"
+            }
         } else {
-            "BaseEntity<$idType>()"
+            if (isLongId) {
+                "LongBaseEntity()"
+            } else {
+                "BaseEntity<$idType>()"
+            }
         }
     }
 

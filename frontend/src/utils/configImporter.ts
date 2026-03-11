@@ -1,5 +1,5 @@
 import { INVERSE_RELATION } from '../types/aggregateConfig';
-import type { AggregateConfig, IdStrategy, RelationType } from '../types/aggregateConfig';
+import type { AggregateConfig, IdStrategy, RelationType, ColumnOverride } from '../types/aggregateConfig';
 import type { TableSchema, TableColumn, TableIndex, TableDef } from '../types/tableSchema';
 import { AUDIT_COLUMNS, AUDIT_COLUMN_NAMES, makeIdColumn, makeFkColumn, makeFkIndex } from '../types/tableSchema';
 
@@ -18,6 +18,8 @@ export interface InitialOverrides {
     targetRelationType: RelationType;
     joinColumn: string;
   }>;
+  enumDefinitions?: Record<string, string[]>;
+  columnOverrides?: Record<string, Record<string, ColumnOverride>>;
 }
 
 /**
@@ -119,9 +121,22 @@ export function importAggregateConfig(raw: unknown): {
         }
       }
 
-      return { name, schema: null, columns, indexes, engine: null, charset: null, comment: null };
+      return { name, schema: null, columns: ensureAuditColumns(columns), indexes, engine: null, charset: null, comment: null };
     });
     schema = { tables };
+  }
+
+  // Extract column overrides from aggregates
+  const columnOverrides: Record<string, Record<string, ColumnOverride>> = {};
+  for (const agg of config.aggregates) {
+    if (agg.columnOverrides && Object.keys(agg.columnOverrides).length > 0) {
+      columnOverrides[agg.root] = agg.columnOverrides;
+    }
+    for (const entity of agg.entities) {
+      if (entity.columnOverrides && Object.keys(entity.columnOverrides).length > 0) {
+        columnOverrides[entity.table] = entity.columnOverrides;
+      }
+    }
   }
 
   return {
@@ -135,6 +150,8 @@ export function importAggregateConfig(raw: unknown): {
       aggregateAssignments,
       nodeIdStrategies,
       edgeDefinitions,
+      enumDefinitions: config.enums ?? {},
+      columnOverrides,
     },
   };
 }

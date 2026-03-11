@@ -1,1 +1,7 @@
-// 순수 도메인/공통 레이어 - 프레임워크 의존성 없음
+plugins {
+    `java-library`
+}
+
+dependencies {
+    api(libs.arrow.core)
+}

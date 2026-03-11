@@ -84,11 +84,9 @@ class EntityGeneratorTest {
         try {
             generator.generate(schema, config, outputDir)
 
-            val entityDir = File(outputDir, "com/example/order/entity")
-            assertTrue(entityDir.exists())
-            assertTrue(File(entityDir, "Order.kt").exists())
-            assertTrue(File(entityDir, "OrderItem.kt").exists())
-            assertTrue(File(entityDir, "Product.kt").exists())
+            assertTrue(File(outputDir, "com/example/order/order/Order.kt").exists())
+            assertTrue(File(outputDir, "com/example/order/orderitem/OrderItem.kt").exists())
+            assertTrue(File(outputDir, "com/example/order/product/Product.kt").exists())
         } finally {
             outputDir.deleteRecursively()
         }
@@ -102,13 +100,13 @@ class EntityGeneratorTest {
 
         try {
             generator.generate(schema, config, outputDir)
-            val source = File(outputDir, "com/example/order/entity/Order.kt").readText()
+            val source = File(outputDir, "com/example/order/order/Order.kt").readText()
 
-            assertContains(source, "import spring.kraft.jpa.AggregateRootBaseEntity")
-            assertContains(source, ": AggregateRootBaseEntity<Long, Order>()")
+            assertContains(source, "import spring.kraft.jpa.LongAggregateRootBaseEntity")
+            assertContains(source, ": LongAggregateRootBaseEntity<Order>()")
             assertContains(source, "@get:IdentityColumn")
-            assertContains(source, "val name: String")
-            assertContains(source, "val status: String")
+            assertContains(source, "var name: String")
+            assertContains(source, "var status: String")
             assertContains(source, "@OneToMany(mappedBy = \"order\"")
             assertContains(source, "val orderItems: MutableList<OrderItem>")
             assertFalse(source.contains("val version"))
@@ -127,14 +125,14 @@ class EntityGeneratorTest {
 
         try {
             generator.generate(schema, config, outputDir)
-            val source = File(outputDir, "com/example/order/entity/OrderItem.kt").readText()
+            val source = File(outputDir, "com/example/order/orderitem/OrderItem.kt").readText()
 
-            assertContains(source, ": BaseEntity<Long>()")
+            assertContains(source, ": LongBaseEntity()")
             assertContains(source, "@ManyToOne(fetch = FetchType.LAZY)")
             assertContains(source, "@JoinColumn(name = \"order_id\", nullable = false)")
-            assertContains(source, "val order: Order")
-            assertContains(source, "val price: BigDecimal")
-            assertFalse(source.contains("val orderId"))
+            assertContains(source, "var order: Order")
+            assertContains(source, "var price: BigDecimal")
+            assertFalse(source.contains("var orderId"))
         } finally {
             outputDir.deleteRecursively()
         }
@@ -148,9 +146,9 @@ class EntityGeneratorTest {
 
         try {
             generator.generate(schema, config, outputDir)
-            val source = File(outputDir, "com/example/order/entity/Product.kt").readText()
+            val source = File(outputDir, "com/example/order/product/Product.kt").readText()
 
-            assertContains(source, ": BaseEntity<Long>()")
+            assertContains(source, ": LongBaseEntity()")
             assertContains(source, "@get:IdentityColumn")
             assertFalse(source.contains("ManyToOne"))
             assertFalse(source.contains("OneToMany"))
@@ -183,10 +181,10 @@ class EntityGeneratorTest {
 
         try {
             generator.generate(parseSchema(sql), config, outputDir)
-            val source = File(outputDir, "com/example/order/entity/OrderItem.kt").readText()
+            val source = File(outputDir, "com/example/order/orderitem/OrderItem.kt").readText()
 
             assertContains(source, "@JoinColumn(name = \"order_id\", nullable = true)")
-            assertContains(source, "val order: Order?")
+            assertContains(source, "var order: Order?")
         } finally {
             outputDir.deleteRecursively()
         }
@@ -279,12 +277,12 @@ class EntityGeneratorTest {
         try {
             generator.generate(parseSchema(baseSql), configParser.parse(unidirectionalConfig), outputDir)
 
-            val orderSource = File(outputDir, "com/example/order/entity/Order.kt").readText()
+            val orderSource = File(outputDir, "com/example/order/order/Order.kt").readText()
             assertContains(orderSource, "@OneToMany(cascade = [CascadeType.ALL], orphanRemoval = true)")
             assertContains(orderSource, "@JoinColumn(name = \"order_id\")")
             assertFalse(orderSource.contains("mappedBy"))
 
-            val itemSource = File(outputDir, "com/example/order/entity/OrderItem.kt").readText()
+            val itemSource = File(outputDir, "com/example/order/orderitem/OrderItem.kt").readText()
             assertFalse(itemSource.contains("ManyToOne"))
             assertFalse(itemSource.contains("val order:"))
         } finally {
@@ -319,7 +317,7 @@ class EntityGeneratorTest {
         val outputDir = createTempDir()
         try {
             generator.generate(parseSchema(sql), configParser.parse(uuidConfig), outputDir)
-            val source = File(outputDir, "com/example/order/entity/Order.kt").readText()
+            val source = File(outputDir, "com/example/order/order/Order.kt").readText()
 
             assertContains(source, "@GeneratedValue(strategy = GenerationType.UUID)")
             assertFalse(source.contains("GenerationType.IDENTITY"))
@@ -374,10 +372,10 @@ class EntityGeneratorTest {
         try {
             generator.generate(parseSchema(sql), configParser.parse(mixedConfig), outputDir)
 
-            val orderSource = File(outputDir, "com/example/order/entity/Order.kt").readText()
+            val orderSource = File(outputDir, "com/example/order/order/Order.kt").readText()
             assertContains(orderSource, "GenerationType.SEQUENCE")
 
-            val itemSource = File(outputDir, "com/example/order/entity/OrderItem.kt").readText()
+            val itemSource = File(outputDir, "com/example/order/orderitem/OrderItem.kt").readText()
             assertContains(itemSource, "@Id")
             assertFalse(itemSource.contains("@GeneratedValue"))
         } finally {

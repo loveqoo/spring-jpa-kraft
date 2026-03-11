@@ -65,7 +65,13 @@
     "idxUnique": "Unique",
     "idxSelectColumns": "Select columns",
     "addIndex": "Add index",
-    "addIndexBatch": "Indexes for all columns"
+    "addIndexBatch": "Indexes for all columns",
+    "enums": "Enums",
+    "enumsShort": "Enum",
+    "enumsDesc": "Define enum types that can be assigned to columns. Values will be used as-is for Kotlin enum constants.",
+    "enumValuesPlaceholder": "Type a value and press Enter",
+    "enumNamePlaceholder": "EnumName (PascalCase)",
+    "addEnum": "Add"
   },
   "configPanel": {
     "selectHint": "Select a node or edge to configure",
@@ -143,6 +149,7 @@
     "colPK": "PK",
     "colNN": "NN",
     "colAI": "AI",
+    "colEnum": "Enum",
     "colDefault": "Default",
     "colComment": "Comment",
     "tableComment": "Table Comment",

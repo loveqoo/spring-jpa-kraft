@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import type { TableColumn, TableIndex } from '../types/tableSchema';
 import { AUDIT_COLUMN_NAMES } from '../types/tableSchema';
 import { COLUMN_TYPES, TYPES_WITH_SIZE } from '../types/aggregateConfig';
+import type { ColumnOverride } from '../types/aggregateConfig';
 import { isAIConfigured } from '../ai/aiClient';
 import { buildTableModificationMessages } from '../ai/prompts';
 import { useAIGenerate } from '../ai/useAIGenerate';
@@ -23,6 +24,9 @@ interface Props {
   defaultColumns: TableColumn[];
   defaultIndexes: TableIndex[];
   tableComment: string | null;
+  enumDefinitions: Record<string, string[]>;
+  columnOverrides: Record<string, ColumnOverride>;
+  onColumnOverrideChange: (columnName: string, override: ColumnOverride | null) => void;
   onSave: (newName: string, columns: TableColumn[], indexes: TableIndex[], comment: string | null) => void;
   onDelete: () => void;
   onCancel: () => void;
@@ -55,6 +59,9 @@ export default function TableEditorModal({
   defaultColumns,
   defaultIndexes,
   tableComment,
+  enumDefinitions,
+  columnOverrides,
+  onColumnOverrideChange,
   onSave,
   onDelete,
   onCancel,
@@ -294,7 +301,7 @@ export default function TableEditorModal({
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '130px 110px 60px repeat(3, 28px) 90px 120px 60px',
+            gridTemplateColumns: '130px 100px 55px repeat(3, 28px) 100px 90px 100px 60px',
             gap: 4,
             padding: '6px 8px',
             background: '#fafafa',
@@ -311,6 +318,7 @@ export default function TableEditorModal({
           <span>{t('tableEditor.colPK')}</span>
           <span>{t('tableEditor.colNN')}</span>
           <span>{t('tableEditor.colAI')}</span>
+          <span>{t('tableEditor.colEnum')}</span>
           <span>{t('tableEditor.colDefault')}</span>
           <span>{t('tableEditor.colComment')}</span>
           <span />
@@ -323,7 +331,7 @@ export default function TableEditorModal({
             key={i}
             style={{
               display: 'grid',
-              gridTemplateColumns: '130px 110px 60px repeat(3, 28px) 90px 120px 60px',
+              gridTemplateColumns: '130px 100px 55px repeat(3, 28px) 100px 90px 100px 60px',
               gap: 4,
               padding: '4px 8px',
               borderBottom: '1px solid #f5f5f5',
@@ -369,6 +377,16 @@ export default function TableEditorModal({
             />
             <Checkbox tabIndex={0} checked={col.notNull} onChange={(e) => updateCol(i, { notNull: e.target.checked })} disabled={isAudit} />
             <Checkbox tabIndex={0} checked={col.autoIncrement} onChange={(e) => updateCol(i, { autoIncrement: e.target.checked })} disabled={isAudit} />
+            <Select
+              size="small"
+              value={columnOverrides[col.name]?.enumType ?? undefined}
+              onChange={(v) => onColumnOverrideChange(col.name, v ? { enumType: v } : null)}
+              allowClear
+              placeholder="—"
+              disabled={isAudit || col.primaryKey}
+              style={{ width: '100%', fontSize: 11 }}
+              options={Object.keys(enumDefinitions).map((n) => ({ label: n, value: n }))}
+            />
             <Input
               size="small"
               value={col.defaultValue ?? ''}

@@ -65,7 +65,13 @@
     "idxUnique": "고유",
     "idxSelectColumns": "컬럼 선택",
     "addIndex": "인덱스 추가",
-    "addIndexBatch": "전체 컬럼 인덱스 추가"
+    "addIndexBatch": "전체 컬럼 인덱스 추가",
+    "enums": "열거형",
+    "enumsShort": "Enum",
+    "enumsDesc": "컬럼에 할당할 열거형 타입을 정의합니다. 값은 Kotlin enum 상수로 사용됩니다.",
+    "enumValuesPlaceholder": "값 입력 후 Enter",
+    "enumNamePlaceholder": "이름 (PascalCase)",
+    "addEnum": "추가"
   },
   "configPanel": {
     "selectHint": "노드 또는 엣지를 선택하여 설정하세요",
@@ -143,6 +149,7 @@
     "colPK": "PK",
     "colNN": "NN",
     "colAI": "AI",
+    "colEnum": "Enum",
     "colDefault": "기본값",
     "colComment": "코멘트",
     "tableComment": "테이블 코멘트",

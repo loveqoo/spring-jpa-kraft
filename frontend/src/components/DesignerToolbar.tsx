@@ -1,4 +1,5 @@
-import { Input, Select, Button, Tooltip, Divider, Popover, Tag, InputNumber, Checkbox } from 'antd';
+import { useState } from 'react';
+import { Input, Select, Button, Tooltip, Divider, Popover, Tag, InputNumber, Checkbox, Typography } from 'antd';
 import {
   ExportOutlined,
   ArrowLeftOutlined,
@@ -38,6 +39,10 @@ interface Props {
   onDefaultColumnsChange: (columns: TableColumn[]) => void;
   defaultIndexes: TableIndex[];
   onDefaultIndexesChange: (indexes: TableIndex[]) => void;
+  enumDefinitions: Record<string, string[]>;
+  onEnumAdd: (name: string, values: string[]) => void;
+  onEnumUpdate: (name: string, values: string[]) => void;
+  onEnumRemove: (name: string) => void;
   onAddTable: () => void;
   onExportDDL: () => void;
   onExport: () => void;
@@ -60,6 +65,10 @@ export default function DesignerToolbar({
   onDefaultColumnsChange,
   defaultIndexes,
   onDefaultIndexesChange,
+  enumDefinitions,
+  onEnumAdd,
+  onEnumUpdate,
+  onEnumRemove,
   onAddTable,
   onExportDDL,
   onExport,
@@ -155,6 +164,11 @@ export default function DesignerToolbar({
       <div style={{ marginBottom: 12 }}>
         <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>{t('toolbar.defaultIndexes')}</div>
         <DefaultIndexesEditor indexes={defaultIndexes} onChange={onDefaultIndexesChange} columnNames={defaultColumnNames} compact />
+      </div>
+      <Divider style={{ margin: '8px 0' }} />
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>{t('toolbar.enums')}</div>
+        <EnumDefinitionsEditor enums={enumDefinitions} onAdd={onEnumAdd} onUpdate={onEnumUpdate} onRemove={onEnumRemove} />
       </div>
       <Divider style={{ margin: '8px 0' }} />
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -290,6 +304,30 @@ export default function DesignerToolbar({
           </Popover>
         )}
 
+        {/* Enums */}
+        {isDesktop && (
+          <Popover
+            content={
+              <EnumDefinitionsEditor
+                enums={enumDefinitions}
+                onAdd={onEnumAdd}
+                onUpdate={onEnumUpdate}
+                onRemove={onEnumRemove}
+              />
+            }
+            title={t('toolbar.enums')}
+            trigger="click"
+            placement="bottomRight"
+          >
+            <Button
+              type="text"
+              style={{ color: Object.keys(enumDefinitions).length > 0 ? '#1677ff' : '#8c8c8c', fontSize: 12, whiteSpace: 'nowrap' }}
+            >
+              {isWideDesktop ? t('toolbar.enums') : t('toolbar.enumsShort')}{Object.keys(enumDefinitions).length > 0 ? ` (${Object.keys(enumDefinitions).length})` : ''}
+            </Button>
+          </Popover>
+        )}
+
         {/* Hidden Columns */}
         <Popover
           content={hiddenColumnsContent}
@@ -354,6 +392,72 @@ export default function DesignerToolbar({
             {isWideDesktop && t('toolbar.exportJson')}
           </Button>
         </Tooltip>
+      </div>
+    </div>
+  );
+}
+
+const { Text } = Typography;
+
+function EnumDefinitionsEditor({
+  enums,
+  onAdd,
+  onUpdate,
+  onRemove,
+}: {
+  enums: Record<string, string[]>;
+  onAdd: (name: string, values: string[]) => void;
+  onUpdate: (name: string, values: string[]) => void;
+  onRemove: (name: string) => void;
+}) {
+  const { t } = useTranslation();
+  const [newName, setNewName] = useState('');
+  const entries = Object.entries(enums);
+
+  const isValidIdentifier = (s: string) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(s);
+
+  const handleAdd = () => {
+    const trimmed = newName.trim();
+    if (!trimmed || enums[trimmed] || !isValidIdentifier(trimmed)) return;
+    onAdd(trimmed, []);
+    setNewName('');
+  };
+
+  return (
+    <div style={{ width: 360 }}>
+      <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 8 }}>
+        {t('toolbar.enumsDesc')}
+      </div>
+      {entries.map(([name, values]) => (
+        <div key={name} style={{ marginBottom: 8, border: '1px solid #f0f0f0', borderRadius: 6, padding: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <Text strong style={{ fontSize: 13 }}>{name}</Text>
+            <Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={() => onRemove(name)} />
+          </div>
+          <Select
+            mode="tags"
+            size="small"
+            style={{ width: '100%' }}
+            placeholder={t('toolbar.enumValuesPlaceholder')}
+            value={values}
+            onChange={(v) => onUpdate(name, v.filter(isValidIdentifier))}
+            tokenSeparators={[',']}
+            notFoundContent={null}
+          />
+        </div>
+      ))}
+      <div style={{ display: 'flex', gap: 4 }}>
+        <Input
+          size="small"
+          placeholder={t('toolbar.enumNamePlaceholder')}
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          onPressEnter={handleAdd}
+          style={{ flex: 1 }}
+        />
+        <Button size="small" type="dashed" icon={<PlusOutlined />} onClick={handleAdd} disabled={!newName.trim() || !!enums[newName.trim()]}>
+          {t('toolbar.addEnum')}
+        </Button>
       </div>
     </div>
   );

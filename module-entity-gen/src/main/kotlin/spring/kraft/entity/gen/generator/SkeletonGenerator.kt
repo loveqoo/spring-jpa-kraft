@@ -2,6 +2,7 @@ package spring.kraft.entity.gen.generator
 
 import spring.kraft.entity.gen.TableSchema
 import spring.kraft.entity.gen.config.AggregateConfig
+import spring.kraft.entity.gen.config.AggregateConfigParser
 import java.io.File
 
 class SkeletonGenerator {
@@ -14,6 +15,15 @@ class SkeletonGenerator {
     private val serviceFileWriter = ServiceFileWriter()
     private val searchFieldProviderFileWriter = SearchFieldProviderFileWriter()
     private val controllerFileWriter = ControllerFileWriter()
+    private val enumFileWriter = EnumFileWriter()
+
+    fun generate(
+        configJson: String,
+        outputDir: File,
+    ) {
+        val (config, schema) = AggregateConfigParser().parseWithSchema(configJson)
+        generate(schema, config, outputDir)
+    }
 
     fun generate(
         schema: TableSchema,
@@ -23,32 +33,40 @@ class SkeletonGenerator {
         val metadataList = entityGenerator.buildMetadataList(schema, config)
 
         metadataList.forEach { metadata ->
-            writeFile(outputDir, "${metadata.basePackage}.entity", "${metadata.className}.kt") {
+            val pkg = metadata.basePackage
+            writeFile(outputDir, pkg, "${metadata.className}.kt") {
                 entityFileWriter.write(metadata)
             }
-            writeFile(outputDir, "${metadata.basePackage}.repository", "${metadata.className}Repository.kt") {
+            writeFile(outputDir, pkg, "${metadata.className}Repository.kt") {
                 repositoryFileWriter.write(metadata)
             }
-            writeFile(outputDir, "${metadata.basePackage}.form", "${metadata.className}CreateForm.kt") {
+            writeFile(outputDir, pkg, "${metadata.className}CreateForm.kt") {
                 formFileWriter.writeCreateForm(metadata)
             }
-            writeFile(outputDir, "${metadata.basePackage}.form", "${metadata.className}UpdateForm.kt") {
+            writeFile(outputDir, pkg, "${metadata.className}UpdateForm.kt") {
                 formFileWriter.writeUpdateForm(metadata)
             }
-            writeFile(outputDir, "${metadata.basePackage}.dto", "${metadata.className}Dto.kt") {
+            writeFile(outputDir, pkg, "${metadata.className}Dto.kt") {
                 dtoFileWriter.write(metadata)
             }
-            writeFile(outputDir, "${metadata.basePackage}.service", "${metadata.className}FormResolver.kt") {
+            writeFile(outputDir, pkg, "${metadata.className}FormResolver.kt") {
                 formResolverFileWriter.write(metadata)
             }
-            writeFile(outputDir, "${metadata.basePackage}.service", "${metadata.className}SearchFields.kt") {
+            writeFile(outputDir, pkg, "${metadata.className}SearchFields.kt") {
                 searchFieldProviderFileWriter.write(metadata)
             }
-            writeFile(outputDir, "${metadata.basePackage}.service", "${metadata.className}Service.kt") {
+            writeFile(outputDir, pkg, "${metadata.className}Service.kt") {
                 serviceFileWriter.write(metadata)
             }
-            writeFile(outputDir, "${metadata.basePackage}.controller", "${metadata.className}Controller.kt") {
+            writeFile(outputDir, pkg, "${metadata.className}Controller.kt") {
                 controllerFileWriter.write(metadata)
+            }
+        }
+
+        // Generate enum classes in basePackage
+        config.enums.forEach { (enumName, values) ->
+            writeFile(outputDir, config.basePackage, "$enumName.kt") {
+                enumFileWriter.write(config.basePackage, enumName, values)
             }
         }
     }

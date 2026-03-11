@@ -2,7 +2,7 @@ import { useReducer, useCallback } from 'react';
 import { applyNodeChanges, applyEdgeChanges } from '@xyflow/react';
 import type { Edge, Node, NodeChange, EdgeChange, OnNodesChange, OnEdgesChange, Connection } from '@xyflow/react';
 import { INVERSE_RELATION } from '../types/aggregateConfig';
-import type { IdStrategy, RelationType } from '../types/aggregateConfig';
+import type { IdStrategy, RelationType, ColumnOverride } from '../types/aggregateConfig';
 import type { TableSchema, TableColumn, TableIndex, TableDef } from '../types/tableSchema';
 import { AUDIT_COLUMNS, AUDIT_COLUMN_NAMES, makeIdColumn, makeFkColumn, makeFkIndex } from '../types/tableSchema';
 import type { PendingConnection } from '../components/ConnectionModal';
@@ -39,6 +39,10 @@ export interface DesignerState {
   defaultColumns: TableColumn[];
   /** Default indexes appended to every new table */
   defaultIndexes: TableIndex[];
+  /** Global enum definitions: name → values */
+  enumDefinitions: Record<string, string[]>;
+  /** Per-table column overrides: tableName → { columnName → ColumnOverride } */
+  columnOverrides: Record<string, Record<string, ColumnOverride>>;
   selectedNodeId: string | null;
   selectedEdgeId: string | null;
   pendingConnection: PendingConnection | null;
@@ -75,7 +79,12 @@ type Action =
   | { type: 'UPDATE_COLUMNS'; tableName: string; columns: TableColumn[]; indexes: TableIndex[] }
   | { type: 'SET_PENDING_CONNECTION'; connection: PendingConnection }
   | { type: 'CLEAR_PENDING_CONNECTION' }
-  | { type: 'RESET_STATE'; schema: TableSchema; overrides?: InitialOverrides }
+  | { type: 'SET_ENUM_DEFINITIONS'; enums: Record<string, string[]> }
+  | { type: 'ADD_ENUM'; name: string; values: string[] }
+  | { type: 'UPDATE_ENUM'; name: string; values: string[] }
+  | { type: 'REMOVE_ENUM'; name: string }
+  | { type: 'SET_COLUMN_OVERRIDE'; tableName: string; columnName: string; override: ColumnOverride | null }
+  | { type: 'RESET_STATE'; schema: TableSchema; overrides?: InitialOverrides; preserveSettings?: boolean }
   | {
       type: 'CREATE_CONFIRMED_EDGE';
       connection: PendingConnection;
@@ -321,6 +330,50 @@ function reducer(state: DesignerState, action: Action): DesignerState {
       return { ...state, defaultColumns: action.columns };
     case 'SET_DEFAULT_INDEXES':
       return { ...state, defaultIndexes: action.indexes };
+    case 'SET_ENUM_DEFINITIONS':
+      return { ...state, enumDefinitions: action.enums };
+    case 'ADD_ENUM': {
+      if (state.enumDefinitions[action.name]) return state;
+      return { ...state, enumDefinitions: { ...state.enumDefinitions, [action.name]: action.values } };
+    }
+    case 'UPDATE_ENUM':
+      return { ...state, enumDefinitions: { ...state.enumDefinitions, [action.name]: action.values } };
+    case 'REMOVE_ENUM': {
+      const { [action.name]: _, ...restEnums } = state.enumDefinitions;
+      // Clean up columnOverrides referencing this enum
+      const cleanedOverrides: Record<string, Record<string, ColumnOverride>> = {};
+      for (const [table, overrides] of Object.entries(state.columnOverrides)) {
+        const cleaned: Record<string, ColumnOverride> = {};
+        for (const [col, ov] of Object.entries(overrides)) {
+          if (ov.enumType !== action.name) {
+            cleaned[col] = ov;
+          }
+        }
+        if (Object.keys(cleaned).length > 0) {
+          cleanedOverrides[table] = cleaned;
+        }
+      }
+      return { ...state, enumDefinitions: restEnums, columnOverrides: cleanedOverrides };
+    }
+    case 'SET_COLUMN_OVERRIDE': {
+      const tableOverrides = { ...state.columnOverrides };
+      if (action.override === null) {
+        if (tableOverrides[action.tableName]) {
+          const { [action.columnName]: _, ...rest } = tableOverrides[action.tableName];
+          if (Object.keys(rest).length > 0) {
+            tableOverrides[action.tableName] = rest;
+          } else {
+            delete tableOverrides[action.tableName];
+          }
+        }
+      } else {
+        tableOverrides[action.tableName] = {
+          ...tableOverrides[action.tableName],
+          [action.columnName]: action.override,
+        };
+      }
+      return { ...state, columnOverrides: tableOverrides };
+    }
     case 'ADD_TABLE': {
       const newTable = {
         name: action.tableName,
@@ -382,6 +435,10 @@ function reducer(state: DesignerState, action: Action): DesignerState {
         nodeIdStrategies[name === oldName ? newName : name] = strategy;
       }
       const selectedNodeId = state.selectedNodeId === oldName ? newName : state.selectedNodeId;
+      const columnOverrides: Record<string, Record<string, ColumnOverride>> = {};
+      for (const [tbl, overrides] of Object.entries(state.columnOverrides)) {
+        columnOverrides[tbl === oldName ? newName : tbl] = overrides;
+      }
       return {
         ...state,
         schema: { tables },
@@ -390,6 +447,7 @@ function reducer(state: DesignerState, action: Action): DesignerState {
         roots,
         aggregateAssignments,
         nodeIdStrategies,
+        columnOverrides,
         selectedNodeId,
       };
     }
@@ -409,6 +467,8 @@ function reducer(state: DesignerState, action: Action): DesignerState {
       }
       const nodeIdStrategies = { ...state.nodeIdStrategies };
       delete nodeIdStrategies[action.tableName];
+      const colOverrides = { ...state.columnOverrides };
+      delete colOverrides[action.tableName];
       const selectedNodeId =
         state.selectedNodeId === action.tableName ? null : state.selectedNodeId;
       // Clear selectedEdgeId if the edge was removed with the deleted table
@@ -424,6 +484,7 @@ function reducer(state: DesignerState, action: Action): DesignerState {
         roots,
         aggregateAssignments,
         nodeIdStrategies,
+        columnOverrides: colOverrides,
         selectedNodeId,
         selectedEdgeId,
       };
@@ -452,8 +513,15 @@ function reducer(state: DesignerState, action: Action): DesignerState {
       return { ...state, pendingConnection: action.connection };
     case 'CLEAR_PENDING_CONNECTION':
       return { ...state, pendingConnection: null };
-    case 'RESET_STATE':
-      return createInitialState(action.schema, action.overrides);
+    case 'RESET_STATE': {
+      const newState = createInitialState(action.schema, action.overrides);
+      if (action.preserveSettings) {
+        newState.hiddenColumns = state.hiddenColumns;
+        newState.defaultColumns = state.defaultColumns;
+        newState.defaultIndexes = state.defaultIndexes;
+      }
+      return newState;
+    }
     case 'CREATE_CONFIRMED_EDGE': {
       const { connection, relationType, joinColumn, fkTableName } = action;
       const sourceNode = state.nodes.find((n) => n.id === connection.source);
@@ -555,6 +623,8 @@ function createInitialState(schema: TableSchema, overrides?: InitialOverrides): 
       hiddenColumns: [],
       defaultColumns: [],
       defaultIndexes: [],
+      enumDefinitions: overrides.enumDefinitions ?? {},
+      columnOverrides: overrides.columnOverrides ?? {},
       selectedNodeId: null,
       selectedEdgeId: null,
       pendingConnection: null,
@@ -580,6 +650,8 @@ function createInitialState(schema: TableSchema, overrides?: InitialOverrides): 
     hiddenColumns: [],
     defaultColumns: [],
     defaultIndexes: [],
+    enumDefinitions: {},
+    columnOverrides: {},
     selectedNodeId: null,
     selectedEdgeId: null,
     pendingConnection: null,
