@@ -1,4 +1,4 @@
-package spring.kraft.core
+package spring.kraft.jpa
 
 fun <T : Any> T.updateProperty(
     newValue: T?,
