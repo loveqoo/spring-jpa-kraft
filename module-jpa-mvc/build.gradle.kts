@@ -21,8 +21,8 @@ dependencies {
     // mvc
     api(libs.spring.boot.starter.validation)
     api(libs.spring.boot.starter.webmvc)
-    implementation(libs.spring.boot.h2console)
-    implementation(libs.jackson.module.kotlin)
+    api(libs.spring.boot.h2console)
+    api(libs.jackson.module.kotlin)
     api(libs.swagger.annotations)
 
     // test
