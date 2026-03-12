@@ -1,4 +1,4 @@
-import { Typography, Switch, Select, Button, Divider, Empty, Tag, Segmented, Tooltip, Alert } from 'antd';
+import { Typography, Switch, Select, Button, Divider, Empty, Tag, Segmented, Tooltip, Alert, Checkbox } from 'antd';
 import {
   DeleteOutlined,
   CheckOutlined,
@@ -10,7 +10,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { ID_STRATEGIES, ENGINES, CHARSETS } from '../types/aggregateConfig';
-import type { IdStrategy, RelationType } from '../types/aggregateConfig';
+import type { IdStrategy, RelationType, EntityMode } from '../types/aggregateConfig';
+import { DEFAULT_ENTITY_MODE } from '../types/aggregateConfig';
 import type { TableDef } from '../types/tableSchema';
 import type { Edge } from '@xyflow/react';
 import { extractSide, SIDES } from '../utils/handlePicker';
@@ -60,6 +61,7 @@ interface Props {
   onSetEdgeHandles: (edgeId: string, sourceHandle: string, targetHandle: string) => void;
   onEditTable: (tableName: string) => void;
   onSetTableOption: (tableName: string, key: 'engine' | 'charset' | 'comment', value: string | null) => void;
+  onSetEntityMode: (tableName: string, mode: EntityMode) => void;
   globalEngine: string;
   globalCharset: string;
 }
@@ -76,6 +78,7 @@ export default function ConfigPanel({
   onSetEdgeHandles,
   onEditTable,
   onSetTableOption,
+  onSetEntityMode,
   globalEngine,
   globalCharset,
 }: Props) {
@@ -106,6 +109,7 @@ export default function ConfigPanel({
           onSetIdStrategy={onSetNodeIdStrategy}
           onEditTable={onEditTable}
           onSetTableOption={onSetTableOption}
+          onSetEntityMode={onSetEntityMode}
           globalEngine={globalEngine}
           globalCharset={globalCharset}
         />
@@ -174,6 +178,7 @@ function NodeConfig({
   onSetIdStrategy,
   onEditTable,
   onSetTableOption,
+  onSetEntityMode,
   globalEngine,
   globalCharset,
 }: {
@@ -184,6 +189,7 @@ function NodeConfig({
   onSetIdStrategy: (name: string, strategy: IdStrategy | null) => void;
   onEditTable: (tableName: string) => void;
   onSetTableOption: (tableName: string, key: 'engine' | 'charset' | 'comment', value: string | null) => void;
+  onSetEntityMode: (tableName: string, mode: EntityMode) => void;
   globalEngine: string;
   globalCharset: string;
 }) {
@@ -329,6 +335,49 @@ function NodeConfig({
           style={{ width: '100%' }}
           size="small"
         />
+      </div>
+
+      {/* Entity Mode */}
+      <div style={{ marginBottom: 16 }}>
+        <SectionLabel>{t('configPanel.entityMode')}</SectionLabel>
+        {(() => {
+          const mode = state.entityModes[table.name] ?? DEFAULT_ENTITY_MODE;
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <Checkbox
+                checked={mode.readOnly}
+                onChange={(e) => {
+                  const readOnly = e.target.checked;
+                  onSetEntityMode(table.name, {
+                    readOnly,
+                    searchable: readOnly ? false : mode.searchable,
+                    revision: readOnly ? false : mode.revision,
+                  });
+                }}
+              >
+                <Text style={{ fontSize: 12 }}>{t('configPanel.readOnly')}</Text>
+              </Checkbox>
+              <Checkbox
+                checked={mode.searchable}
+                disabled={mode.readOnly}
+                onChange={(e) => {
+                  onSetEntityMode(table.name, { ...mode, searchable: e.target.checked });
+                }}
+              >
+                <Text style={{ fontSize: 12 }}>{t('configPanel.searchable')}</Text>
+              </Checkbox>
+              <Checkbox
+                checked={mode.revision}
+                disabled={mode.readOnly}
+                onChange={(e) => {
+                  onSetEntityMode(table.name, { ...mode, revision: e.target.checked });
+                }}
+              >
+                <Text style={{ fontSize: 12 }}>{t('configPanel.revision')}</Text>
+              </Checkbox>
+            </div>
+          );
+        })()}
       </div>
 
       <Divider style={{ margin: '14px 0' }} />

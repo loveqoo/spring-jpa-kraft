@@ -14,6 +14,13 @@ object NameConverter {
                 segment.replaceFirstChar { it.uppercaseChar() }
             }
 
+    fun toDisplayName(tableName: String): String =
+        tableName
+            .split("_")
+            .joinToString(" ") { segment ->
+                segment.replaceFirstChar { it.uppercaseChar() }
+            }
+
     fun toCamelCase(snake: String): String {
         val pascal = toPascalCase(snake)
         return pascal.replaceFirstChar { it.lowercaseChar() }

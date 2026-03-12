@@ -4,6 +4,7 @@ import spring.kraft.entity.gen.TableDef
 import spring.kraft.entity.gen.TableSchema
 import spring.kraft.entity.gen.config.AggregateConfig
 import spring.kraft.entity.gen.config.ColumnOverride
+import spring.kraft.entity.gen.config.EntityMode
 import spring.kraft.entity.gen.config.IdStrategy
 import spring.kraft.entity.gen.config.RelationDefinition
 import spring.kraft.entity.gen.config.RelationType
@@ -39,6 +40,7 @@ class EntityGenerator {
         val idStrategyByTable = buildIdStrategyByTable(config)
         val enumOverridesByTable = buildEnumOverridesByTable(config)
         val basePackageByTable = buildBasePackageByTable(config, schema)
+        val entityModeByTable = buildEntityModeByTable(config)
 
         return schema.tables.map { table ->
             val isAggregateRoot = table.name in rootTables
@@ -70,6 +72,7 @@ class EntityGenerator {
                 idStrategy = idStrategyByTable[table.name] ?: config.idStrategy,
                 enumOverrides = tableEnumOverrides,
                 enumPackage = if (tableEnumOverrides.isNotEmpty()) config.basePackage else "",
+                entityMode = entityModeByTable[table.name] ?: EntityMode(),
             )
         }
     }
@@ -202,6 +205,17 @@ class EntityGenerator {
             map[agg.root] = agg.idStrategy ?: config.idStrategy
             agg.entities.forEach { entity ->
                 map[entity.table] = entity.idStrategy ?: aggStrategy
+            }
+        }
+        return map
+    }
+
+    private fun buildEntityModeByTable(config: AggregateConfig): Map<String, EntityMode> {
+        val map = mutableMapOf<String, EntityMode>()
+        config.aggregates.forEach { agg ->
+            map[agg.root] = agg.entityMode
+            agg.entities.forEach { entity ->
+                map[entity.table] = entity.entityMode
             }
         }
         return map

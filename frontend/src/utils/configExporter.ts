@@ -4,10 +4,12 @@ import type {
   AggregateDefinition,
   ColumnOverride,
   EntityDefinition,
+  EntityMode,
   IdStrategy,
   RelationDefinition,
   RelationType,
 } from '../types/aggregateConfig';
+import { DEFAULT_ENTITY_MODE } from '../types/aggregateConfig';
 import type { TableSchema } from '../types/tableSchema';
 
 export interface AggregateState {
@@ -22,6 +24,7 @@ export interface AggregateState {
   schema: TableSchema;
   enumDefinitions: Record<string, string[]>;
   columnOverrides: Record<string, Record<string, ColumnOverride>>;
+  entityModes: Record<string, EntityMode>;
 }
 
 function getSourceRel(edge: Edge): RelationType {
@@ -36,8 +39,17 @@ function getJoinColumn(edge: Edge): string {
   return (edge.data?.joinColumn as string) ?? '';
 }
 
+function isNonDefaultEntityMode(mode: EntityMode | undefined): mode is EntityMode {
+  if (!mode) return false;
+  return (
+    mode.readOnly !== DEFAULT_ENTITY_MODE.readOnly ||
+    mode.searchable !== DEFAULT_ENTITY_MODE.searchable ||
+    mode.revision !== DEFAULT_ENTITY_MODE.revision
+  );
+}
+
 export function buildAggregateConfig(state: AggregateState): AggregateConfig {
-  const { basePackage, globalIdStrategy, globalEngine, globalCharset, roots, nodeIdStrategies, edges, aggregateAssignments, schema, enumDefinitions, columnOverrides } = state;
+  const { basePackage, globalIdStrategy, globalEngine, globalCharset, roots, nodeIdStrategies, edges, aggregateAssignments, schema, enumDefinitions, columnOverrides, entityModes } = state;
 
   const confirmedEdges = edges.filter((e) => e.data?.confirmed !== false);
   const aggregates: AggregateDefinition[] = [];
@@ -61,6 +73,10 @@ export function buildAggregateConfig(state: AggregateState): AggregateConfig {
       const entityOverrides = columnOverrides[name];
       if (entityOverrides && Object.keys(entityOverrides).length > 0) {
         entityDef.columnOverrides = entityOverrides;
+      }
+      const entityMode = entityModes[name];
+      if (isNonDefaultEntityMode(entityMode)) {
+        entityDef.entityMode = entityMode;
       }
       entityMap.set(name, entityDef);
     }
@@ -127,6 +143,10 @@ export function buildAggregateConfig(state: AggregateState): AggregateConfig {
     const rootOverrides = columnOverrides[root];
     if (rootOverrides && Object.keys(rootOverrides).length > 0) {
       aggDef.columnOverrides = rootOverrides;
+    }
+    const rootMode = entityModes[root];
+    if (isNonDefaultEntityMode(rootMode)) {
+      aggDef.entityMode = rootMode;
     }
     aggregates.push(aggDef);
   }

@@ -103,8 +103,9 @@ export default function AggregateDesigner({ schema, overrides, onBack }: Props) 
         schema: state.schema,
         enumDefinitions: state.enumDefinitions,
         columnOverrides: state.columnOverrides,
+        entityModes: state.entityModes,
       }),
-    [state.basePackage, state.globalIdStrategy, state.globalEngine, state.globalCharset, state.roots, state.nodeIdStrategies, state.edges, state.aggregateAssignments, state.schema, state.enumDefinitions, state.columnOverrides],
+    [state.basePackage, state.globalIdStrategy, state.globalEngine, state.globalCharset, state.roots, state.nodeIdStrategies, state.edges, state.aggregateAssignments, state.schema, state.enumDefinitions, state.columnOverrides, state.entityModes],
   );
 
   const handleAIModify = useCallback(async (prompt: string, targetTables: string[]) => {
@@ -271,6 +272,7 @@ export default function AggregateDesigner({ schema, overrides, onBack }: Props) 
       }
       onEditTable={(tableName) => setEditingTable(tableName)}
       onSetTableOption={(tableName, key, value) => dispatch({ type: 'SET_TABLE_OPTION', tableName, key, value })}
+      onSetEntityMode={(tableName, mode) => dispatch({ type: 'SET_ENTITY_MODE', tableName, mode })}
       globalEngine={state.globalEngine}
       globalCharset={state.globalCharset}
     />

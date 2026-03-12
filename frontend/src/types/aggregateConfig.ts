@@ -35,11 +35,24 @@ export interface ColumnOverride {
   enumType?: string;
 }
 
+export interface EntityMode {
+  readOnly: boolean;
+  searchable: boolean;
+  revision: boolean;
+}
+
+export const DEFAULT_ENTITY_MODE: EntityMode = {
+  readOnly: false,
+  searchable: true,
+  revision: false,
+};
+
 export interface EntityDefinition {
   table: string;
   relations: RelationDefinition[];
   idStrategy: IdStrategy | null;
   columnOverrides?: Record<string, ColumnOverride>;
+  entityMode?: EntityMode;
 }
 
 export interface AggregateDefinition {
@@ -48,6 +61,7 @@ export interface AggregateDefinition {
   entities: EntityDefinition[];
   idStrategy: IdStrategy | null;
   columnOverrides?: Record<string, ColumnOverride>;
+  entityMode?: EntityMode;
 }
 
 export interface AggregateConfig {

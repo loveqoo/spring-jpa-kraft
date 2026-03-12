@@ -10,12 +10,25 @@ data class AggregateConfig(
     val tableSchema: TableSchema? = null,
 )
 
+data class EntityMode(
+    val readOnly: Boolean = false,
+    val searchable: Boolean = true,
+    val revision: Boolean = false,
+) {
+    init {
+        require(!(readOnly && (searchable || revision))) {
+            "readOnly mode is exclusive and cannot be combined with searchable or revision"
+        }
+    }
+}
+
 data class AggregateDefinition(
     val root: String,
     val relations: List<RelationDefinition> = emptyList(),
     val entities: List<EntityDefinition> = emptyList(),
     val idStrategy: IdStrategy? = null,
     val columnOverrides: Map<String, ColumnOverride> = emptyMap(),
+    val entityMode: EntityMode = EntityMode(),
 )
 
 data class EntityDefinition(
@@ -23,6 +36,7 @@ data class EntityDefinition(
     val relations: List<RelationDefinition> = emptyList(),
     val idStrategy: IdStrategy? = null,
     val columnOverrides: Map<String, ColumnOverride> = emptyMap(),
+    val entityMode: EntityMode = EntityMode(),
 )
 
 data class ColumnOverride(

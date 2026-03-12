@@ -1,16 +1,19 @@
 import { test, expect } from '@playwright/test';
 import { SchemaInputHelper } from './helpers/schema-input.helper';
 import { DesignerHelper } from './helpers/designer.helper';
+import { ToolbarHelper } from './helpers/toolbar.helper';
 import { AIMockHelper } from './helpers/ai-mock.helper';
 
 let schemaInput: SchemaInputHelper;
 let designer: DesignerHelper;
+let toolbar: ToolbarHelper;
 let aiMock: AIMockHelper;
 
 test.describe('N. AI Flow', () => {
   test.beforeEach(async ({ page }) => {
     schemaInput = new SchemaInputHelper(page);
     designer = new DesignerHelper(page);
+    toolbar = new ToolbarHelper(page);
     aiMock = new AIMockHelper(page);
   });
 
@@ -230,6 +233,58 @@ test.describe('N. AI Flow', () => {
 
       await diffModal.getByRole('button', { name: /Apply/ }).click();
       await expect(diffModal).not.toBeVisible();
+    });
+
+    test('N9: AI apply and undo preserve hidden/default column settings', async ({ page }) => {
+      // 1. Set hidden columns audit preset
+      await toolbar.addAuditHiddenColumns();
+      await expect(page.getByText('created_at').first()).toBeVisible();
+      // Close popover
+      await page.locator('body').click({ position: { x: 0, y: 0 } });
+
+      // 2. Set default columns audit preset
+      await toolbar.addAuditDefaultColumns();
+      await expect(page.locator('input[value="created_at"]').first()).toBeVisible();
+      // Close popover
+      await page.locator('body').click({ position: { x: 0, y: 0 } });
+
+      // 3. AI apply — add a new table
+      const deltaResponse = JSON.stringify({
+        add_tables: [{ name: 'reviews', columns: ['rating INT'] }],
+      });
+      await aiMock.mockStreamingResponse(deltaResponse);
+
+      await page.locator('.ant-float-btn').click();
+      await aiMock.textarea.fill('Add reviews table');
+      await page.getByRole('button', { name: 'send' }).click();
+
+      const diffModal = page.locator('.ant-modal').filter({ hasText: 'AI Changes Preview' });
+      await expect(diffModal).toBeVisible({ timeout: 10_000 });
+      await diffModal.getByRole('button', { name: /Apply/ }).click();
+      await expect(diffModal).not.toBeVisible();
+
+      // 4. Verify hidden columns setting preserved after apply
+      await toolbar.hiddenColumnsButton.click();
+      await expect(page.getByText('created_at').first()).toBeVisible();
+      await page.locator('body').click({ position: { x: 0, y: 0 } });
+
+      // 5. Verify default columns setting preserved after apply
+      await toolbar.defaultColumnsButton.click();
+      await expect(page.locator('input[value="created_at"]').first()).toBeVisible();
+      await page.locator('body').click({ position: { x: 0, y: 0 } });
+
+      // 6. Undo
+      const undoButton = page.locator('button[title="Undo AI change"]').first();
+      await undoButton.click();
+
+      // 7. Verify hidden columns setting preserved after undo
+      await toolbar.hiddenColumnsButton.click();
+      await expect(page.getByText('created_at').first()).toBeVisible();
+      await page.locator('body').click({ position: { x: 0, y: 0 } });
+
+      // 8. Verify default columns setting preserved after undo
+      await toolbar.defaultColumnsButton.click();
+      await expect(page.locator('input[value="created_at"]').first()).toBeVisible();
     });
   });
 });

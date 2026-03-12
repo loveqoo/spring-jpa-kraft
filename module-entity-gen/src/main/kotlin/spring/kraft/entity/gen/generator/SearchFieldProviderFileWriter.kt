@@ -6,13 +6,10 @@ class SearchFieldProviderFileWriter {
 
     fun write(metadata: EntityMetadata): String {
         val sb = StringBuilder()
-        val servicePackage = "${metadata.basePackage}.service"
-        val entityPackage = "${metadata.basePackage}.entity"
         val cls = metadata.className
 
-        sb.appendLine("package $servicePackage")
+        sb.appendLine("package ${metadata.basePackage}")
         sb.appendLine()
-        sb.appendLine("import $entityPackage.$cls")
         sb.appendLine("import org.springframework.data.domain.Sort")
         sb.appendLine("import org.springframework.stereotype.Component")
         sb.appendLine("import spring.kraft.jpa.search.SearchBinder")

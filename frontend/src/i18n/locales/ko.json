@@ -117,7 +117,11 @@
     "sideBottom": "하",
     "sideLeft": "좌",
     "confirm": "확인",
-    "delete": "삭제"
+    "delete": "삭제",
+    "entityMode": "엔티티 모드",
+    "readOnly": "읽기 전용",
+    "searchable": "검색 가능",
+    "revision": "변경 이력"
   },
   "addTable": {
     "title": "테이블 추가",

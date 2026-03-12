@@ -1,6 +1,7 @@
 package spring.kraft.entity.gen.generator
 
 import spring.kraft.entity.gen.TableColumn
+import spring.kraft.entity.gen.config.EntityMode
 import spring.kraft.entity.gen.config.IdStrategy
 
 data class EntityMetadata(
@@ -15,6 +16,7 @@ data class EntityMetadata(
     val idStrategy: IdStrategy = IdStrategy.IDENTITY,
     val enumOverrides: Map<String, String> = emptyMap(),
     val enumPackage: String = "",
+    val entityMode: EntityMode = EntityMode(),
 ) {
     val idType: String
         get() {
@@ -55,6 +57,9 @@ class EntityFileWriter {
         imports.sorted().forEach { sb.appendLine("import $it") }
         sb.appendLine()
 
+        if (metadata.entityMode.revision) {
+            sb.appendLine("@Audited")
+        }
         sb.appendLine("@Entity")
         sb.appendLine("@Table(name = \"${metadata.tableName}\")")
 
@@ -81,6 +86,10 @@ class EntityFileWriter {
     private fun collectImports(metadata: EntityMetadata): Set<String> {
         val imports = mutableSetOf<String>()
         imports.add("jakarta.persistence.*")
+
+        if (metadata.entityMode.revision) {
+            imports.add("org.hibernate.envers.Audited")
+        }
 
         val isLongId = metadata.idType == "Long"
         if (metadata.isAggregateRoot) {

@@ -354,6 +354,9 @@ export default function TableEditorModal({
                 const patch: Partial<TableColumn> = { typeName: v };
                 if (!TYPES_WITH_SIZE.has(v)) patch.typeValue = null;
                 updateCol(i, patch);
+                if (!['VARCHAR', 'CHAR', 'TEXT', 'LONGTEXT'].includes(v) && columnOverrides[col.name]?.enumType) {
+                  onColumnOverrideChange(col.name, null);
+                }
               }}
               options={COLUMN_TYPES.map((t) => ({ label: t, value: t }))}
               style={{ width: '100%' }}
@@ -383,7 +386,7 @@ export default function TableEditorModal({
               onChange={(v) => onColumnOverrideChange(col.name, v ? { enumType: v } : null)}
               allowClear
               placeholder="—"
-              disabled={isAudit || col.primaryKey}
+              disabled={isAudit || col.primaryKey || !['VARCHAR', 'CHAR', 'TEXT', 'LONGTEXT'].includes(col.typeName.toUpperCase())}
               style={{ width: '100%', fontSize: 11 }}
               options={Object.keys(enumDefinitions).map((n) => ({ label: n, value: n }))}
             />

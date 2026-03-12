@@ -2,7 +2,7 @@ import { useReducer, useCallback } from 'react';
 import { applyNodeChanges, applyEdgeChanges } from '@xyflow/react';
 import type { Edge, Node, NodeChange, EdgeChange, OnNodesChange, OnEdgesChange, Connection } from '@xyflow/react';
 import { INVERSE_RELATION } from '../types/aggregateConfig';
-import type { IdStrategy, RelationType, ColumnOverride } from '../types/aggregateConfig';
+import type { IdStrategy, RelationType, ColumnOverride, EntityMode } from '../types/aggregateConfig';
 import type { TableSchema, TableColumn, TableIndex, TableDef } from '../types/tableSchema';
 import { AUDIT_COLUMNS, AUDIT_COLUMN_NAMES, makeIdColumn, makeFkColumn, makeFkIndex } from '../types/tableSchema';
 import type { PendingConnection } from '../components/ConnectionModal';
@@ -43,6 +43,8 @@ export interface DesignerState {
   enumDefinitions: Record<string, string[]>;
   /** Per-table column overrides: tableName → { columnName → ColumnOverride } */
   columnOverrides: Record<string, Record<string, ColumnOverride>>;
+  /** Per-table entity mode: tableName → EntityMode */
+  entityModes: Record<string, EntityMode>;
   selectedNodeId: string | null;
   selectedEdgeId: string | null;
   pendingConnection: PendingConnection | null;
@@ -84,6 +86,7 @@ type Action =
   | { type: 'UPDATE_ENUM'; name: string; values: string[] }
   | { type: 'REMOVE_ENUM'; name: string }
   | { type: 'SET_COLUMN_OVERRIDE'; tableName: string; columnName: string; override: ColumnOverride | null }
+  | { type: 'SET_ENTITY_MODE'; tableName: string; mode: EntityMode }
   | { type: 'RESET_STATE'; schema: TableSchema; overrides?: InitialOverrides; preserveSettings?: boolean }
   | {
       type: 'CREATE_CONFIRMED_EDGE';
@@ -374,6 +377,12 @@ function reducer(state: DesignerState, action: Action): DesignerState {
       }
       return { ...state, columnOverrides: tableOverrides };
     }
+    case 'SET_ENTITY_MODE': {
+      return {
+        ...state,
+        entityModes: { ...state.entityModes, [action.tableName]: action.mode },
+      };
+    }
     case 'ADD_TABLE': {
       const newTable = {
         name: action.tableName,
@@ -439,6 +448,10 @@ function reducer(state: DesignerState, action: Action): DesignerState {
       for (const [tbl, overrides] of Object.entries(state.columnOverrides)) {
         columnOverrides[tbl === oldName ? newName : tbl] = overrides;
       }
+      const entityModes: Record<string, EntityMode> = {};
+      for (const [tbl, mode] of Object.entries(state.entityModes)) {
+        entityModes[tbl === oldName ? newName : tbl] = mode;
+      }
       return {
         ...state,
         schema: { tables },
@@ -448,6 +461,7 @@ function reducer(state: DesignerState, action: Action): DesignerState {
         aggregateAssignments,
         nodeIdStrategies,
         columnOverrides,
+        entityModes,
         selectedNodeId,
       };
     }
@@ -469,6 +483,8 @@ function reducer(state: DesignerState, action: Action): DesignerState {
       delete nodeIdStrategies[action.tableName];
       const colOverrides = { ...state.columnOverrides };
       delete colOverrides[action.tableName];
+      const entityModesAfterDelete = { ...state.entityModes };
+      delete entityModesAfterDelete[action.tableName];
       const selectedNodeId =
         state.selectedNodeId === action.tableName ? null : state.selectedNodeId;
       // Clear selectedEdgeId if the edge was removed with the deleted table
@@ -485,6 +501,7 @@ function reducer(state: DesignerState, action: Action): DesignerState {
         aggregateAssignments,
         nodeIdStrategies,
         columnOverrides: colOverrides,
+        entityModes: entityModesAfterDelete,
         selectedNodeId,
         selectedEdgeId,
       };
@@ -625,6 +642,7 @@ function createInitialState(schema: TableSchema, overrides?: InitialOverrides): 
       defaultIndexes: [],
       enumDefinitions: overrides.enumDefinitions ?? {},
       columnOverrides: overrides.columnOverrides ?? {},
+      entityModes: overrides.entityModes ?? {},
       selectedNodeId: null,
       selectedEdgeId: null,
       pendingConnection: null,
@@ -652,6 +670,7 @@ function createInitialState(schema: TableSchema, overrides?: InitialOverrides): 
     defaultIndexes: [],
     enumDefinitions: {},
     columnOverrides: {},
+    entityModes: {},
     selectedNodeId: null,
     selectedEdgeId: null,
     pendingConnection: null,

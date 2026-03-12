@@ -1,5 +1,6 @@
 package spring.kraft.controller.action
 
+import io.swagger.v3.oas.annotations.Operation
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.history.Revision
@@ -15,8 +16,10 @@ interface RevisionEntityAction<ID, E, D, CF, UF> :
           CF : Any,
           UF : UpdateForm<ID>,
           D : Serializable {
+    @Operation(summary = "리비전 조회", description = "엔티티의 전체 리비전 이력을 조회합니다.")
     fun revisions(id: ID): Revisions<Int, D>
 
+    @Operation(summary = "리비전 페이지 조회", description = "엔티티의 리비전 이력을 페이지네이션으로 조회합니다.")
     fun revisionPages(
         id: ID,
         pageable: Pageable,

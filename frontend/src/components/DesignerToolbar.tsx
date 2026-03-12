@@ -168,7 +168,7 @@ export default function DesignerToolbar({
       <Divider style={{ margin: '8px 0' }} />
       <div style={{ marginBottom: 12 }}>
         <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>{t('toolbar.enums')}</div>
-        <EnumDefinitionsEditor enums={enumDefinitions} onAdd={onEnumAdd} onUpdate={onEnumUpdate} onRemove={onEnumRemove} />
+        <EnumDefinitionsEditor enums={enumDefinitions} onAdd={onEnumAdd} onUpdate={onEnumUpdate} onRemove={onEnumRemove} compact />
       </div>
       <Divider style={{ margin: '8px 0' }} />
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -404,11 +404,13 @@ function EnumDefinitionsEditor({
   onAdd,
   onUpdate,
   onRemove,
+  compact = false,
 }: {
   enums: Record<string, string[]>;
   onAdd: (name: string, values: string[]) => void;
   onUpdate: (name: string, values: string[]) => void;
   onRemove: (name: string) => void;
+  compact?: boolean;
 }) {
   const { t } = useTranslation();
   const [newName, setNewName] = useState('');
@@ -424,7 +426,7 @@ function EnumDefinitionsEditor({
   };
 
   return (
-    <div style={{ width: 360 }}>
+    <div style={{ width: compact ? '100%' : 360 }}>
       <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 8 }}>
         {t('toolbar.enumsDesc')}
       </div>

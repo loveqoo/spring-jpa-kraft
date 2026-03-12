@@ -34,27 +34,37 @@ class SkeletonGenerator {
 
         metadataList.forEach { metadata ->
             val pkg = metadata.basePackage
+            val mode = metadata.entityMode
+            val variant = ServiceFileWriter.resolveVariant(mode)
+
             writeFile(outputDir, pkg, "${metadata.className}.kt") {
                 entityFileWriter.write(metadata)
             }
             writeFile(outputDir, pkg, "${metadata.className}Repository.kt") {
                 repositoryFileWriter.write(metadata)
             }
-            writeFile(outputDir, pkg, "${metadata.className}CreateForm.kt") {
-                formFileWriter.writeCreateForm(metadata)
-            }
-            writeFile(outputDir, pkg, "${metadata.className}UpdateForm.kt") {
-                formFileWriter.writeUpdateForm(metadata)
-            }
             writeFile(outputDir, pkg, "${metadata.className}Dto.kt") {
                 dtoFileWriter.write(metadata)
             }
-            writeFile(outputDir, pkg, "${metadata.className}FormResolver.kt") {
-                formResolverFileWriter.write(metadata)
+
+            if (!mode.readOnly) {
+                writeFile(outputDir, pkg, "${metadata.className}CreateForm.kt") {
+                    formFileWriter.writeCreateForm(metadata)
+                }
+                writeFile(outputDir, pkg, "${metadata.className}UpdateForm.kt") {
+                    formFileWriter.writeUpdateForm(metadata)
+                }
+                writeFile(outputDir, pkg, "${metadata.className}FormResolver.kt") {
+                    formResolverFileWriter.write(metadata)
+                }
             }
-            writeFile(outputDir, pkg, "${metadata.className}SearchFields.kt") {
-                searchFieldProviderFileWriter.write(metadata)
+
+            if (variant == ServiceVariant.SEARCHABLE || variant == ServiceVariant.SEARCHABLE_REVISION) {
+                writeFile(outputDir, pkg, "${metadata.className}SearchFields.kt") {
+                    searchFieldProviderFileWriter.write(metadata)
+                }
             }
+
             writeFile(outputDir, pkg, "${metadata.className}Service.kt") {
                 serviceFileWriter.write(metadata)
             }

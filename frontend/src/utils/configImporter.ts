@@ -1,5 +1,5 @@
 import { INVERSE_RELATION } from '../types/aggregateConfig';
-import type { AggregateConfig, IdStrategy, RelationType, ColumnOverride } from '../types/aggregateConfig';
+import type { AggregateConfig, IdStrategy, RelationType, ColumnOverride, EntityMode } from '../types/aggregateConfig';
 import type { TableSchema, TableColumn, TableIndex, TableDef } from '../types/tableSchema';
 import { AUDIT_COLUMNS, AUDIT_COLUMN_NAMES, makeIdColumn, makeFkColumn, makeFkIndex } from '../types/tableSchema';
 
@@ -20,6 +20,7 @@ export interface InitialOverrides {
   }>;
   enumDefinitions?: Record<string, string[]>;
   columnOverrides?: Record<string, Record<string, ColumnOverride>>;
+  entityModes?: Record<string, EntityMode>;
 }
 
 /**
@@ -139,6 +140,19 @@ export function importAggregateConfig(raw: unknown): {
     }
   }
 
+  // Extract entity modes from aggregates
+  const entityModes: Record<string, EntityMode> = {};
+  for (const agg of config.aggregates) {
+    if (agg.entityMode) {
+      entityModes[agg.root] = agg.entityMode;
+    }
+    for (const entity of agg.entities) {
+      if (entity.entityMode) {
+        entityModes[entity.table] = entity.entityMode;
+      }
+    }
+  }
+
   return {
     schema,
     overrides: {
@@ -152,6 +166,7 @@ export function importAggregateConfig(raw: unknown): {
       edgeDefinitions,
       enumDefinitions: config.enums ?? {},
       columnOverrides,
+      entityModes,
     },
   };
 }
