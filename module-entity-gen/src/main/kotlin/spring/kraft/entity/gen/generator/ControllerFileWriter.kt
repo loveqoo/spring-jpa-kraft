@@ -60,10 +60,10 @@ class ControllerFileWriter {
         // toReadDto
         appendToDtoMethod(sb, "toReadDto", metadata)
 
-        // toRevisionDto (only for Revision variants)
+        // toRevisionDto (only for Revision variants) — audit columns are always null in revisions
         if (variant == ServiceVariant.REVISION || variant == ServiceVariant.SEARCHABLE_REVISION) {
             sb.appendLine()
-            appendToDtoMethod(sb, "toRevisionDto", metadata)
+            appendToRevisionDtoMethod(sb, metadata)
         }
 
         sb.appendLine("}")
@@ -280,6 +280,29 @@ class ControllerFileWriter {
         sb.appendLine("        createdBy = entity.createdBy ?: \"\",")
         sb.appendLine("        updatedAt = entity.updatedAt?.toYmdHms()?.getOrDefault(\"\") ?: \"\",")
         sb.appendLine("        updatedBy = entity.updatedBy ?: \"\",")
+        sb.appendLine("    )")
+    }
+
+    private fun appendToRevisionDtoMethod(
+        sb: StringBuilder,
+        metadata: EntityMetadata,
+    ) {
+        val cls = metadata.className
+        sb.appendLine("    override fun toRevisionDto(entity: $cls): ${cls}Dto = ${cls}Dto(")
+        sb.appendLine("        id = entity.id!!,")
+        metadata.normalColumns.forEach { classified ->
+            val propName = NameConverter.toPropertyName(classified.column.name)
+            val enumType = metadata.enumOverrides[classified.column.name]
+            if (enumType != null) {
+                sb.appendLine("        $propName = entity.$propName.name,")
+            } else {
+                sb.appendLine("        $propName = entity.$propName,")
+            }
+        }
+        sb.appendLine("        createdAt = \"\",")
+        sb.appendLine("        createdBy = \"\",")
+        sb.appendLine("        updatedAt = \"\",")
+        sb.appendLine("        updatedBy = \"\",")
         sb.appendLine("    )")
     }
 
