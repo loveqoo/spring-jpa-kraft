@@ -58,22 +58,13 @@ class ControllerFileWriter {
         }
 
         // toReadDto
-        sb.appendLine("    override fun toReadDto(entity: $cls): ${cls}Dto = ${cls}Dto(")
-        sb.appendLine("        id = entity.id!!,")
-        metadata.normalColumns.forEach { classified ->
-            val propName = NameConverter.toPropertyName(classified.column.name)
-            val enumType = metadata.enumOverrides[classified.column.name]
-            if (enumType != null) {
-                sb.appendLine("        $propName = entity.$propName.name,")
-            } else {
-                sb.appendLine("        $propName = entity.$propName,")
-            }
+        appendToDtoMethod(sb, "toReadDto", metadata)
+
+        // toRevisionDto (only for Revision variants)
+        if (variant == ServiceVariant.REVISION || variant == ServiceVariant.SEARCHABLE_REVISION) {
+            sb.appendLine()
+            appendToDtoMethod(sb, "toRevisionDto", metadata)
         }
-        sb.appendLine("        createdAt = entity.createdAt?.toYmdHms()?.getOrDefault(\"\") ?: \"\",")
-        sb.appendLine("        createdBy = entity.createdBy ?: \"\",")
-        sb.appendLine("        updatedAt = entity.updatedAt?.toYmdHms()?.getOrDefault(\"\") ?: \"\",")
-        sb.appendLine("        updatedBy = entity.updatedBy ?: \"\",")
-        sb.appendLine("    )")
 
         sb.appendLine("}")
         sb.appendLine()
@@ -266,6 +257,30 @@ class ControllerFileWriter {
         sb.appendLine("    @DeleteMapping(\"/{id}\")")
         sb.appendLine("    override fun delete(@PathVariable id: $idType): MutationResponse = super.delete(id)")
         sb.appendLine()
+    }
+
+    private fun appendToDtoMethod(
+        sb: StringBuilder,
+        methodName: String,
+        metadata: EntityMetadata,
+    ) {
+        val cls = metadata.className
+        sb.appendLine("    override fun $methodName(entity: $cls): ${cls}Dto = ${cls}Dto(")
+        sb.appendLine("        id = entity.id!!,")
+        metadata.normalColumns.forEach { classified ->
+            val propName = NameConverter.toPropertyName(classified.column.name)
+            val enumType = metadata.enumOverrides[classified.column.name]
+            if (enumType != null) {
+                sb.appendLine("        $propName = entity.$propName.name,")
+            } else {
+                sb.appendLine("        $propName = entity.$propName,")
+            }
+        }
+        sb.appendLine("        createdAt = entity.createdAt?.toYmdHms()?.getOrDefault(\"\") ?: \"\",")
+        sb.appendLine("        createdBy = entity.createdBy ?: \"\",")
+        sb.appendLine("        updatedAt = entity.updatedAt?.toYmdHms()?.getOrDefault(\"\") ?: \"\",")
+        sb.appendLine("        updatedBy = entity.updatedBy ?: \"\",")
+        sb.appendLine("    )")
     }
 
     private fun appendRevisionMethods(
