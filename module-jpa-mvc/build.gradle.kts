@@ -19,8 +19,8 @@ dependencies {
     api(libs.spring.data.envers)
 
     // mvc
-    implementation(libs.spring.boot.starter.validation)
-    implementation(libs.spring.boot.starter.webmvc)
+    api(libs.spring.boot.starter.validation)
+    api(libs.spring.boot.starter.webmvc)
     implementation(libs.spring.boot.h2console)
     implementation(libs.jackson.module.kotlin)
     api(libs.swagger.annotations)
