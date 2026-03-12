@@ -16,7 +16,7 @@ dependencies {
     antlr(libs.antlr4)
     implementation(libs.antlr4.runtime)
     implementation(libs.jackson.module.kotlin)
-    testImplementation(project(":module-mvc"))
+    testImplementation(project(":module-jpa-mvc"))
     testImplementation(libs.swagger.annotations)
     testImplementation(libs.spring.boot.starter.data.jpa)
     testImplementation(libs.spring.boot.starter.webmvc)

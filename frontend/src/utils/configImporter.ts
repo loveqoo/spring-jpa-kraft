@@ -21,6 +21,7 @@ export interface InitialOverrides {
   enumDefinitions?: Record<string, string[]>;
   columnOverrides?: Record<string, Record<string, ColumnOverride>>;
   entityModes?: Record<string, EntityMode>;
+  revisionSuffix?: string;
 }
 
 /**
@@ -167,6 +168,7 @@ export function importAggregateConfig(raw: unknown): {
       enumDefinitions: config.enums ?? {},
       columnOverrides,
       entityModes,
+      revisionSuffix: config.revisionSuffix,
     },
   };
 }

@@ -71,7 +71,9 @@
     "enumsDesc": "Define enum types that can be assigned to columns. Values will be used as-is for Kotlin enum constants.",
     "enumValuesPlaceholder": "Type a value and press Enter",
     "enumNamePlaceholder": "EnumName (PascalCase)",
-    "addEnum": "Add"
+    "addEnum": "Add",
+    "revisionSuffix": "Revision Table Suffix",
+    "revisionSuffixDesc": "Suffix for Hibernate Envers audit tables (e.g. _aud)"
   },
   "configPanel": {
     "selectHint": "Select a node or edge to configure",

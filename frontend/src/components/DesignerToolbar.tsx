@@ -43,6 +43,8 @@ interface Props {
   onEnumAdd: (name: string, values: string[]) => void;
   onEnumUpdate: (name: string, values: string[]) => void;
   onEnumRemove: (name: string) => void;
+  revisionSuffix: string;
+  onRevisionSuffixChange: (value: string) => void;
   onAddTable: () => void;
   onExportDDL: () => void;
   onExport: () => void;
@@ -69,6 +71,8 @@ export default function DesignerToolbar({
   onEnumAdd,
   onEnumUpdate,
   onEnumRemove,
+  revisionSuffix,
+  onRevisionSuffixChange,
   onAddTable,
   onExportDDL,
   onExport,
@@ -169,6 +173,16 @@ export default function DesignerToolbar({
       <div style={{ marginBottom: 12 }}>
         <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>{t('toolbar.enums')}</div>
         <EnumDefinitionsEditor enums={enumDefinitions} onAdd={onEnumAdd} onUpdate={onEnumUpdate} onRemove={onEnumRemove} compact />
+      </div>
+      <Divider style={{ margin: '8px 0' }} />
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>{t('toolbar.revisionSuffix')}</div>
+        <Input
+          value={revisionSuffix}
+          onChange={(e) => onRevisionSuffixChange(e.target.value)}
+          size="small"
+          placeholder="_aud"
+        />
       </div>
       <Divider style={{ margin: '8px 0' }} />
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -289,6 +303,17 @@ export default function DesignerToolbar({
                   onChange={onDefaultIndexesChange}
                   columnNames={defaultColumnNames}
                 />
+                <Divider style={{ margin: '12px 0' }} />
+                <div>
+                  <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 4 }}>{t('toolbar.revisionSuffix')}</div>
+                  <Input
+                    value={revisionSuffix}
+                    onChange={(e) => onRevisionSuffixChange(e.target.value)}
+                    size="small"
+                    placeholder="_aud"
+                    style={{ width: 200 }}
+                  />
+                </div>
               </div>
             }
             title={t('toolbar.defaultSettingsTitle')}

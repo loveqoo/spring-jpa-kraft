@@ -104,8 +104,9 @@ export default function AggregateDesigner({ schema, overrides, onBack }: Props) 
         enumDefinitions: state.enumDefinitions,
         columnOverrides: state.columnOverrides,
         entityModes: state.entityModes,
+        revisionSuffix: state.revisionSuffix,
       }),
-    [state.basePackage, state.globalIdStrategy, state.globalEngine, state.globalCharset, state.roots, state.nodeIdStrategies, state.edges, state.aggregateAssignments, state.schema, state.enumDefinitions, state.columnOverrides, state.entityModes],
+    [state.basePackage, state.globalIdStrategy, state.globalEngine, state.globalCharset, state.roots, state.nodeIdStrategies, state.edges, state.aggregateAssignments, state.schema, state.enumDefinitions, state.columnOverrides, state.entityModes, state.revisionSuffix],
   );
 
   const handleAIModify = useCallback(async (prompt: string, targetTables: string[]) => {
@@ -170,7 +171,15 @@ export default function AggregateDesigner({ schema, overrides, onBack }: Props) 
     }));
   }, [state.edges, updateWaypoint]);
 
-  const ddlText = useMemo(() => exportDDL(state.schema, state.globalEngine, state.globalCharset), [state.schema, state.globalEngine, state.globalCharset]);
+  const ddlText = useMemo(
+    () => exportDDL(state.schema, {
+      globalEngine: state.globalEngine,
+      globalCharset: state.globalCharset,
+      entityModes: state.entityModes,
+      revisionSuffix: state.revisionSuffix,
+    }),
+    [state.schema, state.globalEngine, state.globalCharset, state.entityModes, state.revisionSuffix],
+  );
 
   const validationErrors = useMemo(
     () => validateSchema({ schema: state.schema, edges: state.edges }),
@@ -299,6 +308,8 @@ export default function AggregateDesigner({ schema, overrides, onBack }: Props) 
         onEnumAdd={(name, values) => dispatch({ type: 'ADD_ENUM', name, values })}
         onEnumUpdate={(name, values) => dispatch({ type: 'UPDATE_ENUM', name, values })}
         onEnumRemove={(name) => dispatch({ type: 'REMOVE_ENUM', name })}
+        revisionSuffix={state.revisionSuffix}
+        onRevisionSuffixChange={(v) => dispatch({ type: 'SET_REVISION_SUFFIX', value: v })}
         onAddTable={() => setAddTableOpen(true)}
         onExportDDL={() => setDdlPreviewOpen(true)}
         onExport={() => setPreviewOpen(true)}

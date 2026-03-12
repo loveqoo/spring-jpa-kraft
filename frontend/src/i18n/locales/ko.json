@@ -71,7 +71,9 @@
     "enumsDesc": "컬럼에 할당할 열거형 타입을 정의합니다. 값은 Kotlin enum 상수로 사용됩니다.",
     "enumValuesPlaceholder": "값 입력 후 Enter",
     "enumNamePlaceholder": "이름 (PascalCase)",
-    "addEnum": "추가"
+    "addEnum": "추가",
+    "revisionSuffix": "변경 이력 테이블 접미사",
+    "revisionSuffixDesc": "Hibernate Envers 감사 테이블 접미사 (예: _aud)"
   },
   "configPanel": {
     "selectHint": "노드 또는 엣지를 선택하여 설정하세요",

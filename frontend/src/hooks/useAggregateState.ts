@@ -45,6 +45,8 @@ export interface DesignerState {
   columnOverrides: Record<string, Record<string, ColumnOverride>>;
   /** Per-table entity mode: tableName → EntityMode */
   entityModes: Record<string, EntityMode>;
+  /** Suffix for Hibernate Envers audit tables (e.g. '_aud') */
+  revisionSuffix: string;
   selectedNodeId: string | null;
   selectedEdgeId: string | null;
   pendingConnection: PendingConnection | null;
@@ -87,6 +89,7 @@ type Action =
   | { type: 'REMOVE_ENUM'; name: string }
   | { type: 'SET_COLUMN_OVERRIDE'; tableName: string; columnName: string; override: ColumnOverride | null }
   | { type: 'SET_ENTITY_MODE'; tableName: string; mode: EntityMode }
+  | { type: 'SET_REVISION_SUFFIX'; value: string }
   | { type: 'RESET_STATE'; schema: TableSchema; overrides?: InitialOverrides; preserveSettings?: boolean }
   | {
       type: 'CREATE_CONFIRMED_EDGE';
@@ -126,6 +129,13 @@ function autoAssign(
   }
 
   return assignments;
+}
+
+function sanitizeRevisionSuffix(value: string | undefined | null): string {
+  if (!value) return '_aud';
+  const sanitized = value.replace(/[^a-z0-9_]/gi, '');
+  if (!sanitized) return '_aud';
+  return sanitized.startsWith('_') ? sanitized : `_${sanitized}`;
 }
 
 function findOpenPosition(nodes: Node[]): { x: number; y: number } {
@@ -382,6 +392,9 @@ function reducer(state: DesignerState, action: Action): DesignerState {
         ...state,
         entityModes: { ...state.entityModes, [action.tableName]: action.mode },
       };
+    }
+    case 'SET_REVISION_SUFFIX': {
+      return { ...state, revisionSuffix: sanitizeRevisionSuffix(action.value) };
     }
     case 'ADD_TABLE': {
       const newTable = {
@@ -643,6 +656,7 @@ function createInitialState(schema: TableSchema, overrides?: InitialOverrides): 
       enumDefinitions: overrides.enumDefinitions ?? {},
       columnOverrides: overrides.columnOverrides ?? {},
       entityModes: overrides.entityModes ?? {},
+      revisionSuffix: sanitizeRevisionSuffix(overrides.revisionSuffix),
       selectedNodeId: null,
       selectedEdgeId: null,
       pendingConnection: null,
@@ -671,6 +685,7 @@ function createInitialState(schema: TableSchema, overrides?: InitialOverrides): 
     enumDefinitions: {},
     columnOverrides: {},
     entityModes: {},
+    revisionSuffix: '_aud',
     selectedNodeId: null,
     selectedEdgeId: null,
     pendingConnection: null,

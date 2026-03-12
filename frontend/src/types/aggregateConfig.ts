@@ -71,5 +71,6 @@ export interface AggregateConfig {
   enums?: Record<string, string[]>;
   globalEngine?: string;
   globalCharset?: string;
+  revisionSuffix?: string;
   tableSchema?: import('./tableSchema').TableSchema;
 }

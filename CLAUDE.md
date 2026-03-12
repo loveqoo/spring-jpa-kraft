@@ -8,9 +8,7 @@
 
 | 모듈 | 설명 | 상세 |
 |------|------|------|
-| `module-core` | 공통 모듈 (`Result<T>` 확장 함수 — `flatMap`, `zip`) | [docs/module-core.md](docs/module-core.md) |
-| `module-jpa` | JPA 기반 코드 (Entity, Repository, EntityHelper, DataSource 라우팅) | [docs/module-jpa.md](docs/module-jpa.md) |
-| `module-mvc` | Spring MVC (FormResolver, Service, Controller, Delegator 계층) | [docs/module-mvc.md](docs/module-mvc.md) |
+| `module-jpa-mvc` | Core + JPA + MVC 통합 (Result 확장, Entity, Repository, Service, Controller) | [docs/module-jpa-mvc.md](docs/module-jpa-mvc.md) |
 | `module-ksp-annotations` | KSP 어노테이션 (`@KraftAggregate`, `@KraftExpose`). 순수 Kotlin | [docs/module-ksp.md](docs/module-ksp.md) |
 | `module-ksp-processor` | KSP 프로세서. 타입 안전 ID + InternalMediator 코드 생성 | [docs/module-ksp.md](docs/module-ksp.md) |
 | `module-entity-gen` | ANTLR4 MySQL DDL 파서 + Entity 코드 생성 | [docs/module-entity-gen.md](docs/module-entity-gen.md) |
@@ -19,9 +17,7 @@
 ## 빌드
 
 ```bash
-./gradlew :module-core:build
-./gradlew :module-jpa:build
-./gradlew :module-mvc:build
+./gradlew :module-jpa-mvc:build
 ./gradlew :module-ksp-annotations:build
 ./gradlew :module-ksp-processor:build
 ./gradlew :module-entity-gen:build
