@@ -3,6 +3,7 @@ package spring.kraft.entity.gen.gradle
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFile
@@ -25,6 +26,10 @@ abstract class GenerateEntitiesTask : DefaultTask() {
     @get:Input
     abstract val outputDir: Property<String>
 
+    @get:Input
+    @get:Optional
+    abstract val targetTables: ListProperty<String>
+
     @get:OutputDirectory
     val resolvedOutputDir: File
         get() = project.file(outputDir.get())
@@ -34,19 +39,21 @@ abstract class GenerateEntitiesTask : DefaultTask() {
         val configJson = configFile.get().asFile.readText()
         val outDir = resolvedOutputDir
         val generator = SkeletonGenerator()
+        val tables = targetTables.orNull?.takeIf { it.isNotEmpty() }?.toSet()
 
         if (ddlFile.isPresent) {
             val schema = DdlParser().parse(ddlFile.get().asFile)
             val config = AggregateConfigParser().parse(configJson)
-            generator.generate(schema, config, outDir)
+            generator.generate(schema, config, outDir, tables)
         } else {
             try {
-                generator.generate(configJson, outDir)
+                generator.generate(configJson, outDir, tables)
             } catch (e: IllegalArgumentException) {
                 throw GradleException(e.message ?: "Failed to generate entities", e)
             }
         }
 
-        logger.lifecycle("Generated entities to: ${outDir.absolutePath}")
+        val scope = if (tables != null) "tables [${tables.joinToString()}]" else "all entities"
+        logger.lifecycle("Generated $scope to: ${outDir.absolutePath}")
     }
 }

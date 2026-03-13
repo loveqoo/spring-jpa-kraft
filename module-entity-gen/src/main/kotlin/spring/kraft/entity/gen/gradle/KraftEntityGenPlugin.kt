@@ -17,6 +17,7 @@ class KraftEntityGenPlugin : Plugin<Project> {
             task.ddlFile.set(extension.ddlFile)
             task.configFile.set(extension.configFile)
             task.outputDir.set(extension.outputDir)
+            task.targetTables.set(extension.targetTables)
         }
     }
 }

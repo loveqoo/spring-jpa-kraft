@@ -20,19 +20,27 @@ class SkeletonGenerator {
     fun generate(
         configJson: String,
         outputDir: File,
+        targetTables: Set<String>? = null,
     ) {
         val (config, schema) = AggregateConfigParser().parseWithSchema(configJson)
-        generate(schema, config, outputDir)
+        generate(schema, config, outputDir, targetTables)
     }
 
     fun generate(
         schema: TableSchema,
         config: AggregateConfig,
         outputDir: File,
+        targetTables: Set<String>? = null,
     ) {
         val metadataList = entityGenerator.buildMetadataList(schema, config)
+        val filtered =
+            if (targetTables != null) {
+                metadataList.filter { it.tableName in targetTables }
+            } else {
+                metadataList
+            }
 
-        metadataList.forEach { metadata ->
+        filtered.forEach { metadata ->
             val pkg = metadata.basePackage
             val mode = metadata.entityMode
             val variant = ServiceFileWriter.resolveVariant(mode)
@@ -73,10 +81,12 @@ class SkeletonGenerator {
             }
         }
 
-        // Generate enum classes in basePackage
-        config.enums.forEach { (enumName, values) ->
-            writeFile(outputDir, config.basePackage, "$enumName.kt") {
-                enumFileWriter.write(config.basePackage, enumName, values)
+        // Generate enum classes in basePackage (only when generating all or when no filter)
+        if (targetTables == null) {
+            config.enums.forEach { (enumName, values) ->
+                writeFile(outputDir, config.basePackage, "$enumName.kt") {
+                    enumFileWriter.write(config.basePackage, enumName, values)
+                }
             }
         }
     }

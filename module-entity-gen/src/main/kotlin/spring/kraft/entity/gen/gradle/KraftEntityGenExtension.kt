@@ -2,6 +2,7 @@ package spring.kraft.entity.gen.gradle
 
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.model.ObjectFactory
+import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 
 abstract class KraftEntityGenExtension(
@@ -13,4 +14,5 @@ abstract class KraftEntityGenExtension(
         objects
             .property(String::class.java)
             .convention("src/main/kotlin")
+    val targetTables: ListProperty<String> = objects.listProperty(String::class.java)
 }

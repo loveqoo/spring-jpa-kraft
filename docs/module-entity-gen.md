@@ -68,19 +68,33 @@ DDL 기반 코드 생성 파이프라인의 파싱 단계. MySQL DDL(`.sql`)을 
 
 DDL + Aggregate Config로부터 Entity뿐 아니라 전체 계층(Repository, Form, Dto, FormResolver, Service, Controller)을 일괄 생성하는 오케스트레이터.
 
-### 생성 파일 (테이블당 9개)
+### Entity Mode
 
-| 패키지 | 파일 | 역할 |
-|--------|------|------|
-| `entity/` | `{Class}.kt` | JPA Entity (기존 EntityGenerator와 동일) |
-| `repository/` | `{Class}Repository.kt` | JpaRepository + JpaSpecificationExecutor |
-| `form/` | `{Class}CreateForm.kt` | 생성용 data class (NORMAL 컬럼 + 부모 ID) |
-| `form/` | `{Class}UpdateForm.kt` | 수정용 data class (nullable 필드, `UpdateForm<ID>` 구현) |
-| `dto/` | `{Class}Dto.kt` | 읽기용 data class (`Serializable` 구현) |
-| `service/` | `{Class}FormResolver.kt` | FormResolver0~4 — forward relation 수에 따라 자동 선택 |
-| `service/` | `{Class}SearchFields.kt` | SearchFieldProvider — String 컬럼은 LIKE, defaultSort DESC createdAt |
-| `service/` | `{Class}Service.kt` | SearchableEntityService 구현 (searchFieldProvider 주입) |
-| `controller/` | `{Class}Controller.kt` | SearchableEntityController 확장 (toReadDto, toCreateDto 등) |
+엔티티별 메타 속성으로 생성되는 Service/Controller variant 결정:
+
+| 플래그 | 기본값 | 효과 |
+|--------|--------|------|
+| `readOnly` | `false` | ReadOnly variant만 생성 (Form/CUD 엔드포인트 없음) |
+| `searchable` | `true` | JPA Specification 검색 지원 |
+| `revision` | `false` | Envers 변경 이력 엔드포인트 추가, `toRevisionDto` 생성 |
+
+`readOnly`는 배타적 — `searchable`/`revision`과 동시 사용 불가.
+
+5가지 variant: `READ_ONLY`, `BASE`, `SEARCHABLE`, `REVISION`, `SEARCHABLE_REVISION`
+
+### 생성 파일 (테이블당 최대 9개, entity mode에 따라 달라짐)
+
+| 패키지 | 파일 | 역할 | 조건 |
+|--------|------|------|------|
+| `entity/` | `{Class}.kt` | JPA Entity | 항상 |
+| `repository/` | `{Class}Repository.kt` | JpaRepository + JpaSpecificationExecutor | 항상 |
+| `form/` | `{Class}CreateForm.kt` | 생성용 data class (NORMAL 컬럼 + 부모 ID) | readOnly가 아닐 때 |
+| `form/` | `{Class}UpdateForm.kt` | 수정용 data class (nullable 필드, `UpdateForm<ID>` 구현) | readOnly가 아닐 때 |
+| `dto/` | `{Class}Dto.kt` | 읽기용 data class (`Serializable` 구현) | 항상 |
+| `service/` | `{Class}FormResolver.kt` | FormResolver0~4 — forward relation 수에 따라 자동 선택 | readOnly가 아닐 때 |
+| `service/` | `{Class}SearchFields.kt` | SearchFieldProvider — String 컬럼은 LIKE, defaultSort DESC createdAt | searchable일 때 |
+| `service/` | `{Class}Service.kt` | variant에 따른 Service 구현 | 항상 |
+| `controller/` | `{Class}Controller.kt` | variant에 따른 Controller 확장 (toReadDto, toRevisionDto 등) | 항상 |
 
 ### FormResolver 번호 자동 결정
 
@@ -96,15 +110,33 @@ forward relation(ManyToOne + forward OneToOne) 개수에 따라:
 - `DtoFileWriter`: PK + NORMAL 컬럼 기반 DTO
 - `FormResolverFileWriter`: 부모 수에 따른 FormResolver 스켈레톤
 - `SearchFieldProviderFileWriter`: SearchFieldProvider 구현 — String 컬럼 → `SearchOp.LIKE`, 기본 정렬 `DESC createdAt`
-- `ServiceFileWriter`: SearchableEntityService 구현 클래스 (searchFieldProvider 생성자 주입)
-- `ControllerFileWriter`: SearchableEntityController + DTO 매핑 메서드
+- `ServiceFileWriter`: entity mode에 따른 Service variant 생성 (`resolveVariant()`로 결정)
+- `ControllerFileWriter`: entity mode에 따른 Controller variant + DTO 매핑 메서드 (`toReadDto`, Revision variant일 때 `toRevisionDto`)
 
 ### 사용법
 
 ```kotlin
 val generator = SkeletonGenerator()
+
+// 전체 생성
 generator.generate(schema, config, outputDir)
-// outputDir 하위에 {basePackage}/entity/, repository/, form/, dto/, service/, controller/ 생성
+
+// 특정 테이블만 생성 (테이블 추가 시 유용)
+generator.generate(schema, config, outputDir, targetTables = setOf("payments", "refunds"))
+```
+
+### Gradle Plugin
+
+```kotlin
+kraftEntityGen {
+    configFile.set(file("aggregate-config.json"))
+    // 특정 테이블만 생성 (생략 시 전체 생성)
+    targetTables.set(listOf("payments", "refunds"))
+}
+```
+
+```bash
+./gradlew generateEntities
 ```
 
 ## TableSchema JSON 직렬화 (`TableSchemaSerializer`)
