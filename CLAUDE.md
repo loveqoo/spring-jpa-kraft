@@ -12,7 +12,7 @@
 | `module-ksp-annotations` | KSP 어노테이션 (`@KraftAggregate`, `@KraftExpose`). 순수 Kotlin | [docs/module-ksp.md](docs/module-ksp.md) |
 | `module-ksp-processor` | KSP 프로세서. 타입 안전 ID + InternalMediator 코드 생성 | [docs/module-ksp.md](docs/module-ksp.md) |
 | `module-entity-gen` | ANTLR4 MySQL DDL 파서 + Entity 코드 생성 | [docs/module-entity-gen.md](docs/module-entity-gen.md) |
-| `entity-designer` | Aggregate Designer SPA (React, npm workspace) | — |
+| `app-entity-designer` | Aggregate Designer SPA (React, npm workspace) | — |
 | `buildSrc` | Gradle 빌드 설정 | — |
 
 ## 빌드

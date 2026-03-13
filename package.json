@@ -1,6 +1,6 @@
 {
   "private": true,
   "workspaces": [
-    "entity-designer"
+    "app-entity-designer"
   ]
 }

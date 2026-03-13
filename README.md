@@ -41,7 +41,7 @@ The SPA and code generator run from this repository. Clone it first.
 
 ### 1. Model
 
-Open the [Aggregate Designer](entity-designer/) SPA. Create tables, define columns and indexes, draw relations between tables. Mark aggregate roots and assign child entities.
+Open the [Aggregate Designer](app-entity-designer/) SPA. Create tables, define columns and indexes, draw relations between tables. Mark aggregate roots and assign child entities.
 
 ### 2. Export
 
@@ -77,7 +77,7 @@ dependencies {
 
 | Module | Description |
 |--------|-------------|
-| [entity-designer](entity-designer/) | Aggregate Designer — visual modeling SPA (React) |
+| [app-entity-designer](app-entity-designer/) | Aggregate Designer — visual modeling SPA (React) |
 | [module-entity-gen](module-entity-gen/) | DDL parser + skeleton code generator |
 | [module-jpa-mvc](module-jpa-mvc/) | Entity base classes, Service/Controller hierarchy, DataSource routing |
 | [module-ksp-annotations](module-ksp-annotations/) | `@KraftAggregate`, `@KraftExpose` |
