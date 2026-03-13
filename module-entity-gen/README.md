@@ -75,7 +75,7 @@ val restored = serializer.fromJson(File("schema.json").readText())
 }
 ```
 
-The frontend [Aggregate Designer](../frontend/) provides a visual canvas to compose this config from a TableSchema JSON.
+The [Aggregate Designer](../entity-designer/) provides a visual canvas to compose this config from a TableSchema JSON.
 
 ## Entity Mode
 

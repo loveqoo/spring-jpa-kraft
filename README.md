@@ -41,7 +41,7 @@ The SPA and code generator run from this repository. Clone it first.
 
 ### 1. Model
 
-Open the [Aggregate Designer](frontend/) SPA. Create tables, define columns and indexes, draw relations between tables. Mark aggregate roots and assign child entities.
+Open the [Aggregate Designer](entity-designer/) SPA. Create tables, define columns and indexes, draw relations between tables. Mark aggregate roots and assign child entities.
 
 ### 2. Export
 
@@ -67,9 +67,7 @@ Published to Maven Local (`./gradlew publishToMavenLocal`).
 
 ```kotlin
 dependencies {
-    implementation("io.github.loveqoo:module-core:0.0.1-SNAPSHOT")
-    implementation("io.github.loveqoo:module-jpa:0.0.1-SNAPSHOT")
-    implementation("io.github.loveqoo:module-mvc:0.0.1-SNAPSHOT")
+    implementation("io.github.loveqoo:module-jpa-mvc:0.0.1-SNAPSHOT")
     implementation("io.github.loveqoo:module-ksp-annotations:0.0.1-SNAPSHOT")
     ksp("io.github.loveqoo:module-ksp-processor:0.0.1-SNAPSHOT")
 }
@@ -79,11 +77,9 @@ dependencies {
 
 | Module | Description |
 |--------|-------------|
-| [frontend](frontend/) | Aggregate Designer — visual modeling SPA (React) |
+| [entity-designer](entity-designer/) | Aggregate Designer — visual modeling SPA (React) |
 | [module-entity-gen](module-entity-gen/) | DDL parser + skeleton code generator |
-| [module-core](module-core/) | `Result<T>` extensions |
-| [module-jpa](module-jpa/) | Entity base classes, DataSource routing, Specification search |
-| [module-mvc](module-mvc/) | FormResolver, Service, Controller hierarchy |
+| [module-jpa-mvc](module-jpa-mvc/) | Entity base classes, Service/Controller hierarchy, DataSource routing |
 | [module-ksp-annotations](module-ksp-annotations/) | `@KraftAggregate`, `@KraftExpose` |
 | [module-ksp-processor](module-ksp-processor/) | KSP — type-safe ID + InternalMediator generation |
 
