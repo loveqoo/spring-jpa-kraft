@@ -1,4 +1,14 @@
-export type IdStrategy = 'IDENTITY' | 'SEQUENCE' | 'UUID' | 'AUTO' | 'NONE';
+export type {
+  IdStrategy,
+  RelationType,
+  RelationDefinition,
+  ColumnOverride,
+  EntityMode,
+  EntityDefinition,
+  AggregateDefinition,
+  AggregateConfig,
+} from './schema';
+import type { IdStrategy, RelationType, EntityMode } from './schema';
 
 export const ID_STRATEGIES: IdStrategy[] = ['IDENTITY', 'SEQUENCE', 'UUID', 'AUTO', 'NONE'];
 
@@ -17,60 +27,14 @@ export const ENGINES = ['InnoDB', 'MyISAM', 'MEMORY', 'CSV', 'ARCHIVE'] as const
 
 export const CHARSETS = ['utf8mb4', 'utf8', 'latin1', 'ascii', 'binary'] as const;
 
-export type RelationType = 'OneToOne' | 'OneToMany' | 'ManyToOne';
-
 export const INVERSE_RELATION: Record<RelationType, RelationType> = {
   OneToMany: 'ManyToOne',
   ManyToOne: 'OneToMany',
   OneToOne: 'OneToOne',
 };
 
-export interface RelationDefinition {
-  type: RelationType;
-  target: string;
-  joinColumn: string;
-}
-
-export interface ColumnOverride {
-  enumType?: string;
-}
-
-export interface EntityMode {
-  readOnly: boolean;
-  searchable: boolean;
-  revision: boolean;
-}
-
 export const DEFAULT_ENTITY_MODE: EntityMode = {
   readOnly: false,
   searchable: true,
   revision: false,
 };
-
-export interface EntityDefinition {
-  table: string;
-  relations: RelationDefinition[];
-  idStrategy: IdStrategy | null;
-  columnOverrides?: Record<string, ColumnOverride>;
-  entityMode?: EntityMode;
-}
-
-export interface AggregateDefinition {
-  root: string;
-  relations: RelationDefinition[];
-  entities: EntityDefinition[];
-  idStrategy: IdStrategy | null;
-  columnOverrides?: Record<string, ColumnOverride>;
-  entityMode?: EntityMode;
-}
-
-export interface AggregateConfig {
-  basePackage: string;
-  aggregates: AggregateDefinition[];
-  idStrategy: IdStrategy;
-  enums?: Record<string, string[]>;
-  globalEngine?: string;
-  globalCharset?: string;
-  revisionSuffix?: string;
-  tableSchema?: import('./tableSchema').TableSchema;
-}
