@@ -39,7 +39,7 @@ export default function SchemaInput({ onLoad, onLoadConfig }: Props) {
   const aiConfigured = isAIConfigured();
   const { generate, loading: aiLoading, error: aiError, abort: aiAbort } = useAIGenerate<SimpleSchemaResponse>();
 
-  const handleAIGenerate = async (prompt: string, _targetTables: string[]) => {
+  const handleAIGenerate = async (prompt: string) => {
     const messages = buildSchemaGenerationMessages(prompt);
     const result = await generate(messages, { schema: simpleSchemaResponseSchema, stream: true });
     if (result && result.tables) {

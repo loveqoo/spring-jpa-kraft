@@ -86,7 +86,7 @@ export default function TableEditorModal({
   const aiConfigured = isAIConfigured();
   const { generate: aiGenerate, loading: aiLoading, error: aiError, abort: aiAbort } = useAIGenerate<{ columns: TableColumn[]; indexes: TableIndex[] }>();
 
-  const handleAIModify = useCallback(async (prompt: string, _targetTables: string[]) => {
+  const handleAIModify = useCallback(async (prompt: string) => {
     const currentTable = { name, schema: null as string | null, columns: cols, indexes: idxs, engine: null as string | null, charset: null as string | null, comment: comment || null };
     const messages = buildTableModificationMessages(currentTable, prompt);
     const result = await aiGenerate(messages, { schema: tableModResponseSchema });

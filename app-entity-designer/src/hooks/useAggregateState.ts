@@ -352,6 +352,7 @@ function reducer(state: DesignerState, action: Action): DesignerState {
     case 'UPDATE_ENUM':
       return { ...state, enumDefinitions: { ...state.enumDefinitions, [action.name]: action.values } };
     case 'REMOVE_ENUM': {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { [action.name]: _, ...restEnums } = state.enumDefinitions;
       // Clean up columnOverrides referencing this enum
       const cleanedOverrides: Record<string, Record<string, ColumnOverride>> = {};
@@ -372,6 +373,7 @@ function reducer(state: DesignerState, action: Action): DesignerState {
       const tableOverrides = { ...state.columnOverrides };
       if (action.override === null) {
         if (tableOverrides[action.tableName]) {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { [action.columnName]: _, ...rest } = tableOverrides[action.tableName];
           if (Object.keys(rest).length > 0) {
             tableOverrides[action.tableName] = rest;

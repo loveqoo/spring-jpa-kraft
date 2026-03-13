@@ -123,7 +123,7 @@ export function applyDeltaToConfig(config: AggregateConfig, delta: DeltaResponse
 
   // Remove tables
   const removeSet = new Set(delta.remove_tables ?? []);
-  let tables = existingTables.filter((t) => !removeSet.has(t.name));
+  const tables = existingTables.filter((t) => !removeSet.has(t.name));
 
   // Add columns to existing tables
   for (const entry of delta.add_columns ?? []) {
