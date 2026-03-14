@@ -1,6 +1,7 @@
 {
   "private": true,
   "workspaces": [
-    "app-entity-designer"
+    "app-entity-designer",
+    "lib-entity-support"
   ]
 }
