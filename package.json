@@ -1,7 +1,14 @@
 {
   "private": true,
   "workspaces": [
+    "app-dev-playground",
     "app-entity-designer",
-    "lib-entity-support"
-  ]
+    "lib-entity-support",
+    "lib-react-antd"
+  ],
+  "msw": {
+    "workerDirectory": [
+      "app-dev-playground/public"
+    ]
+  }
 }
