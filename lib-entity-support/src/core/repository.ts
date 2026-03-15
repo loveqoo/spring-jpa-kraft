@@ -205,7 +205,7 @@ export abstract class Repository<E extends Entity, D extends IdentifiableDto, CF
         config.baseURL(this.remoteClient.apiUrl)
     }
 
-    private generateEncodedQueries(onBuild: (q: QueryParam) => void): string {
+    protected generateEncodedQueries(onBuild: (q: QueryParam) => void): string {
         const queryParam = QueryParam.of()
         onBuild(queryParam)
         queryParam.write('page', queryParam.readNumberOr('page', 1) - 1)
@@ -215,7 +215,7 @@ export abstract class Repository<E extends Entity, D extends IdentifiableDto, CF
         }))
     }
 
-    private pageByEncodedQueries(
+    protected pageByEncodedQueries(
         encodedQueries: string,
         configuration: (os: ObjectSetter<AxiosRequestConfigExt>) => void = EMPTY_FUNC
     ): Promise<E.Either<Page<E>, string>> {
@@ -226,7 +226,7 @@ export abstract class Repository<E extends Entity, D extends IdentifiableDto, CF
         }).execute(this.role.page).then(this.pageHandler)
     }
 
-    private revisionPageByEncodedQueries(
+    protected revisionPageByEncodedQueries(
         id: number,
         encodedQueries: string,
         role: RoleDefinition,
@@ -239,7 +239,7 @@ export abstract class Repository<E extends Entity, D extends IdentifiableDto, CF
         }).execute(role).then(this.revisionHandler)
     }
 
-    private pageByEncodedQueriesExtend<T>(
+    protected pageByEncodedQueriesExtend<T>(
         encodedQueries: string,
         transform: (entity: E) => Promise<E.Either<T, string>>,
         configuration: (os: ObjectSetter<AxiosRequestConfigExt>) => void = EMPTY_FUNC

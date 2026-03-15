@@ -32,10 +32,10 @@ export const createAuditSearchSchema = () => z.object({
 
 export const AuditSearchSchema = createAuditSearchSchema()
 
-export type AuditSearchType = z.infer<typeof AuditSearchSchema>
+export type AuditSearchSchema = z.infer<typeof AuditSearchSchema>
 
 export const applyAuditInQueryParam = (
-    data: AuditSearchType,
+    data: AuditSearchSchema,
     queryParam: QueryParam
 ): QueryParam => {
     if (data.createdBy != null) queryParam.write(AuditField.createdBy, data.createdBy)
@@ -47,7 +47,7 @@ export const applyAuditInQueryParam = (
 
 export const retrieveAuditFromQueryParam = (
     queryParam: QueryParam
-): AuditSearchType => ({
+): AuditSearchSchema => ({
     createdBy: queryParam.readString(AuditField.createdBy).pipe(O.getOrElse((): null => null)),
     createdAt: queryParam.readDate(AuditField.createdAt).pipe(O.getOrElse((): null => null)),
     updatedBy: queryParam.readString(AuditField.updatedBy).pipe(O.getOrElse((): null => null)),

@@ -35,8 +35,8 @@ export {
     idParameterResolver, idParameterResolverForPromise, effectOps
 } from "./core/utils.ts"
 export { Repository } from "./core/repository.ts"
-export { setLocale, getLocale, type SupportedLocale } from "./core/i18n.ts"
+export { t, setLocale, getLocale, type SupportedLocale, type Messages } from "./core/i18n.ts"
 export {
-    IdSchema, AuditSearchSchema, createAuditSearchSchema, type AuditSearchType,
+    IdSchema, AuditSearchSchema, createAuditSearchSchema,
     applyAuditInQueryParam, retrieveAuditFromQueryParam
 } from "./core/schema.ts"
