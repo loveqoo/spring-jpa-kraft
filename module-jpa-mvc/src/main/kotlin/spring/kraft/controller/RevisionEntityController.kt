@@ -26,7 +26,8 @@ abstract class RevisionEntityController<ID, E, R, S, D, CF, UF> :
           D : Serializable,
           CF : Any,
           UF : UpdateForm<ID> {
-    override val delegator by lazy { RevisionEntityDelegator<ID, E, R, S, D, CF, UF>(service, this) }
+    abstract override val service: S
+    override val delegator by lazy { RevisionEntityDelegator(service, this) }
 
     override fun revisions(id: ID): Revisions<Int, D> = delegator.revisions(id)
 

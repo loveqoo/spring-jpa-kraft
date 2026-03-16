@@ -1,7 +1,5 @@
 package spring.kraft.controller
 
-import org.springframework.data.domain.Page
-import org.springframework.data.domain.Pageable
 import org.springframework.validation.Errors
 import spring.kraft.controller.action.BaseEntityAction
 import spring.kraft.controller.delegator.BaseEntityDelegator
@@ -13,6 +11,7 @@ import spring.kraft.service.BaseEntityService
 import java.io.Serializable
 
 abstract class BaseEntityController<ID, E, S, D, CF, UF> :
+    ReadOnlyEntityController<ID, E, S, D>(),
     BaseEntityAction<ID, E, D, CF, UF>,
     BaseEntityMapper<ID, E, D>
     where ID : Comparable<ID>,
@@ -21,13 +20,9 @@ abstract class BaseEntityController<ID, E, S, D, CF, UF> :
           D : Serializable,
           CF : Any,
           UF : UpdateForm<ID> {
-    abstract val service: S
+    abstract override val service: S
     abstract val tableName: String
-    protected open val delegator by lazy { BaseEntityDelegator(service, this) }
-
-    override fun list(pageable: Pageable): Page<D> = delegator.list(pageable)
-
-    override fun getOne(id: ID): D = delegator.getOne(id)
+    override val delegator by lazy { BaseEntityDelegator(service, this) }
 
     override fun createOne(
         request: CF,

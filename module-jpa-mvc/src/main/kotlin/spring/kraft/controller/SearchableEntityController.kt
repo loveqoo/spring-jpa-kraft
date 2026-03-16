@@ -22,7 +22,8 @@ abstract class SearchableEntityController<ID, E, R, S, D, CF, UF> :
           D : Serializable,
           CF : Any,
           UF : UpdateForm<ID> {
-    override val delegator by lazy { SearchableEntityDelegator<ID, E, R, S, D, CF, UF>(service, this) }
+    abstract override val service: S
+    override val delegator by lazy { SearchableEntityDelegator(service, this) }
 
     override fun search(
         pageable: Pageable,

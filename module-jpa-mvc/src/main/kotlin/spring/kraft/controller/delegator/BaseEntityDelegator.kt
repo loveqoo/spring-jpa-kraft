@@ -11,7 +11,7 @@ import spring.kraft.jpa.BaseEntity
 import spring.kraft.service.BaseEntityService
 import java.io.Serializable
 
-open class BaseEntityDelegator<ID, E, S, D, CF : Any, UF : UpdateForm<ID>>(
+open class BaseEntityDelegator<ID, E, S, D, in CF : Any, in UF : UpdateForm<ID>>(
     private val service: S,
     private val mapper: BaseEntityMapper<ID, E, D>,
 ) : ReadOnlyDelegator<ID, E, S, D>(service, mapper),

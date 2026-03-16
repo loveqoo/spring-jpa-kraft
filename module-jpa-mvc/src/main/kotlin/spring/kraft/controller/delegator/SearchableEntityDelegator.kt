@@ -12,7 +12,7 @@ import spring.kraft.jpa.BaseEntity
 import spring.kraft.service.SearchableEntityService
 import java.io.Serializable
 
-open class SearchableEntityDelegator<ID, E, R, S, D, CF : Any, UF : UpdateForm<ID>>(
+open class SearchableEntityDelegator<ID, E, R, S, D, in CF : Any, in UF : UpdateForm<ID>>(
     private val service: S,
     private val mapper: BaseEntityMapper<ID, E, D>,
 ) : BaseEntityDelegator<ID, E, S, D, CF, UF>(service, mapper),

@@ -7,7 +7,7 @@ import spring.kraft.form.UpdateForm
 import spring.kraft.jpa.BaseEntity
 import java.io.Serializable
 
-interface BaseEntityAction<ID, E, D, CF, UF> :
+interface BaseEntityAction<ID, E, D, in CF, in UF> :
     ReadOnlyAction<ID, E, D>
     where ID : Comparable<ID>,
           E : BaseEntity<ID>,

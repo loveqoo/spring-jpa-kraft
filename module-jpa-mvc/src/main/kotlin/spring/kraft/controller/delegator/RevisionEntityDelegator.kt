@@ -14,7 +14,7 @@ import spring.kraft.jpa.BaseEntity
 import spring.kraft.service.RevisionEntityService
 import java.io.Serializable
 
-open class RevisionEntityDelegator<ID, E, R, S, D, CF : Any, UF : UpdateForm<ID>>(
+open class RevisionEntityDelegator<ID, E, R, S, D, in CF : Any, in UF : UpdateForm<ID>>(
     private val service: S,
     private val mapper: RevisionEntityMapper<ID, E, D>,
 ) : BaseEntityDelegator<ID, E, S, D, CF, UF>(service, mapper),

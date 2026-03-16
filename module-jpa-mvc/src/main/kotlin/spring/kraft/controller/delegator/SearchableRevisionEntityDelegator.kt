@@ -15,7 +15,7 @@ import spring.kraft.jpa.BaseEntity
 import spring.kraft.service.SearchableRevisionEntityService
 import java.io.Serializable
 
-open class SearchableRevisionEntityDelegator<ID, E, R, S, D, CF : Any, UF : UpdateForm<ID>>(
+open class SearchableRevisionEntityDelegator<ID, E, R, S, D, in CF : Any, in UF : UpdateForm<ID>>(
     private val service: S,
     private val mapper: RevisionEntityMapper<ID, E, D>,
 ) : SearchableEntityDelegator<ID, E, R, S, D, CF, UF>(service, mapper),
