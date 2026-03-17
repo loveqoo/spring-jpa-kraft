@@ -1,7 +1,8 @@
 import FormItemWrapper, {type FormItemWrapperProps} from "./FormItemWrapper.tsx";
 import {Input, type InputProps} from "antd";
 
-export interface InputFormItemProps<S extends Record<string, any>> extends Omit<FormItemWrapperProps<S>, 'children'> {
+export interface InputFormItemProps<S extends Record<string, any>>
+    extends Omit<FormItemWrapperProps<S>, 'children'> {
     inputProps?: InputProps
     disabled?: InputProps['disabled']
 }
