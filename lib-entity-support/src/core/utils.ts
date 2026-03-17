@@ -1,6 +1,7 @@
 import {Effect, Either as E, Function as F, Option as O, Schema as S} from 'effect'
 import type {Codec} from './codec.ts'
 import {t} from './i18n.ts'
+import {z, ZodPipe, ZodString} from "zod";
 
 
 export const debug = <T>(obj: T, msg?: string): T => {
@@ -41,6 +42,27 @@ export const idParameterResolverForPromise = <T>(
     errorMsg => Promise.resolve(E.left(errorMsg)),
     id => onSuccess(id)
 )(id)
+
+/**
+ * 스키마 필수 여부를 확인하는 함수
+ * @example
+ * const required = requiredThunk(YourSchema.shape as Record<keyof YourSchema, z.ZodTypeAny>
+ * const isRequired = required('fieldKey')
+ */
+export const requiredThunk = <S extends Record<string, any>>(
+    shape: Record<keyof S, z.ZodTypeAny>
+): (fieldKey: string) => boolean => fieldKey => {
+    let _type: z.ZodTypeAny = shape[fieldKey]
+    if(_type instanceof ZodPipe) { // support transform — unwrap to input type
+        _type = _type.in as z.ZodTypeAny
+    }
+    // Input 엘리먼트의 경우 기본적으로 빈 문자열이므로, 최소 길이가 1 이상인지로 필수 여부를 판단.
+    if(_type instanceof ZodString) {
+        return (_type.minLength ?? 0) > 0
+    }
+    const t = _type.def.type
+    return t !== 'optional' && t !== 'nullable' && t !== 'default'
+}
 
 export const effectOps = {
     tryToOption: <T>(f: () => T): O.Option<T> =>

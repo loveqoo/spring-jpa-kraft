@@ -5,4 +5,8 @@ export { renderAuditSearchForm } from './component/index'
 export type { FormItemWrapperProps } from './component/form/FormItemWrapper'
 export { default as InputFormItem, type InputFormItemProps } from './component/form/InputFormItem'
 export { default as DatePickerFormItem, type DatePickerFormItemProps } from './component/form/DatePickerFormItem'
+export { default as InputNumberFormItem, type InputNumberFormItemProps } from './component/form/InputNumberFormItem'
+export { default as ButtonFormItem } from './component/form/ButtonFormItem'
+export { default as EntityCreateForm } from './component/EntityCreateForm'
+export { default as EntityUpdateForm } from './component/EntityUpdateForm'
 

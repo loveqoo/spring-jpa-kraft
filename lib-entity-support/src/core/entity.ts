@@ -26,9 +26,15 @@ export interface IdentifiableDto {
 }
 
 export const RevisionType = {
-    get INSERT() { return t().revisionInsert },
-    get UPDATE() { return t().revisionUpdate },
-    get DELETE() { return t().revisionDelete },
+    get INSERT() {
+        return t().revisionInsert
+    },
+    get UPDATE() {
+        return t().revisionUpdate
+    },
+    get DELETE() {
+        return t().revisionDelete
+    },
 }
 
 export type RevisionType = keyof typeof RevisionType
@@ -54,7 +60,7 @@ export type RevisionDto<T> = {
     requiredRevisionInstant: string
 }
 
-export type UpdateForm = {id: number}
+export type UpdateForm = { id: number }
 
 export abstract class Entity implements IdentifiableExt {
     readonly id: number
@@ -119,3 +125,9 @@ export type ApiRoleDefinition = {
     revision?: RoleDefinition
 }
 
+type EntityProps<T> = Pick<T, {
+    [K in keyof T]: T[K] extends Function ? never : K;
+}[keyof T]>
+
+export type EntityCreateData<E extends Entity> = EntityProps<Omit<E, 'id' | 'createdAt' | 'createdBy' | 'updatedAt' | 'updatedBy' | 'createdAtStr' | 'updatedAtStr' | 'versionNo'>>
+export type EntityUpdateData<E extends Entity> = EntityProps<Omit<E, 'createdAt' | 'createdBy' | 'updatedAt' | 'updatedBy' | 'createdAtStr' | 'updatedAtStr' | 'versionNo'>>

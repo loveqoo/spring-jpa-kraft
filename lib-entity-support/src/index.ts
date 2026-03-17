@@ -7,7 +7,8 @@ export {
     Entity, FetchableEntity,
     type Identifiable, type IdentifiableExt, type IdentifiableDto,
     type ApiRoleDefinition, type UpdateForm,
-    type RevisionDto, type RevisionMetadata, RevisionType
+    type RevisionDto, type RevisionMetadata, RevisionType,
+    type EntityCreateData, type EntityUpdateData
 } from "./core/entity.ts"
 export { toFormattedString, equalsIgnoreCase } from "./core/extensions.ts"
 export {
@@ -31,7 +32,7 @@ export {
     isRoleDefinition, isRoleError, roleHandler, createRoleHandler, initRoleHandler, defaultHasRole
 } from "./core/role.ts"
 export {
-    debug, EMPTY_FUNC, callOnce,
+    debug, EMPTY_FUNC, callOnce, requiredThunk,
     idParameterResolver, idParameterResolverForPromise, effectOps
 } from "./core/utils.ts"
 export { Repository } from "./core/repository.ts"
