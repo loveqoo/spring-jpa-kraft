@@ -6,6 +6,7 @@ import {Alert, Form, type FormProps} from "antd";
 import {zodResolver} from "@hookform/resolvers/zod";
 import {Either as E} from 'effect'
 import ButtonFormItem from "./form/ButtonFormItem.tsx";
+import {ta} from "../i18n.ts";
 
 type EntityCreateFormProps<T extends Entity, FORM_DATA extends FieldValues> = {
     schema: z.core.$ZodType<FORM_DATA, FORM_DATA>
@@ -48,7 +49,7 @@ const EntityCreateForm = <T extends Entity, FORM_DATA extends FieldValues>(
             const errorMessage = typeof error === 'string' ? error : JSON.stringify(error)
             ufr.setError('root', {
                 type: 'manual',
-                message: `폼 데이터 변환 중 오류가 발생했습니다: ${errorMessage}`
+                message: ta().codecError(errorMessage)
             })
         }
     }
@@ -59,7 +60,7 @@ const EntityCreateForm = <T extends Entity, FORM_DATA extends FieldValues>(
         if (_debug) {
             return `Dirty(${isDirty}), Valid:(${isValid}), isSubmitting:(${isSubmitting})`
         }
-        return hasRole ? '생성' : '권한이 없습니다'
+        return hasRole ? ta().create : ta().noPermission
     })()
 
     return (
@@ -68,7 +69,7 @@ const EntityCreateForm = <T extends Entity, FORM_DATA extends FieldValues>(
             {ufr.formState.errors.root && (
                 <Form.Item>
                     <Alert
-                        title={'오류'}
+                        title={ta().error}
                         description={ufr.formState.errors.root.message}
                         type="error"
                         showIcon

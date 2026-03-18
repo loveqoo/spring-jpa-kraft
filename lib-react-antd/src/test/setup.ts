@@ -1,3 +1,4 @@
+/// <reference types="vitest/globals" />
 import '@testing-library/jest-dom/vitest'
 
 // antd uses matchMedia which jsdom doesn't support

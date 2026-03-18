@@ -4,15 +4,17 @@ import TextArea from "antd/es/input/TextArea";
 
 export interface TextAreaFormItemProps<S extends Record<string, any>>
     extends Omit<FormItemWrapperProps<S>, 'children'> {
+    rows?: number
+    maxLength?: number
     textAreaProps?: TextAreaProps
 }
 
 const TextAreaFormItem = <S extends Record<string, any>>(
-    {textAreaProps, ...rest}: TextAreaFormItemProps<S>
+    {rows = 4, maxLength = 500, textAreaProps, ...rest}: TextAreaFormItemProps<S>
 ) => {
     return (
         <FormItemWrapper {...rest}>
-            <TextArea rows={4} maxLength={5} {...textAreaProps} />
+            <TextArea rows={rows} maxLength={maxLength} {...textAreaProps} />
         </FormItemWrapper>
     )
 }

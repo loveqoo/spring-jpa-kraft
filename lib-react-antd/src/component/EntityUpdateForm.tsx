@@ -7,6 +7,7 @@ import {Either as E} from 'effect'
 import {zodResolver} from "@hookform/resolvers/zod";
 import ButtonFormItem from "./form/ButtonFormItem.tsx";
 import InputNumberFormItem from "./form/InputNumberFormItem.tsx";
+import {ta} from "../i18n.ts";
 
 type EntityUpdateFormProps<T extends Entity, FORM_DATA extends FieldValues> = {
     data: T
@@ -21,7 +22,7 @@ type EntityUpdateFormProps<T extends Entity, FORM_DATA extends FieldValues> = {
     formProps?: FormProps
 }
 
-const isPrimitive = (v: unknown) =>
+const isFormBindable = (v: unknown) =>
     v === null || (typeof v !== "object" && typeof v !== "function") || v instanceof Date;
 
 const EntityUpdateForm = <T extends Entity, FORM_DATA extends FieldValues>(
@@ -37,15 +38,15 @@ const EntityUpdateForm = <T extends Entity, FORM_DATA extends FieldValues>(
 
     const formData: FORM_DATA = (() => {
         const decoded = codec.decode(data).pipe(E.getOrElse(() => ({} as FORM_DATA)))
-        const isValidData = Object.entries(decoded).reduce((acc, [key, value]) => {
-            const primitive = isPrimitive(value)
-            if (!primitive) {
-                debug([key, value], `Form 데이터는 원시 타입만 지원합니다.`)
+        const allBindable = Object.entries(decoded).reduce((acc, [key, value]) => {
+            const bindable = isFormBindable(value)
+            if (!bindable) {
+                debug([key, value], ta().notFormBindable(key))
             }
-            return acc && primitive
+            return acc && bindable
         }, true)
-        if (!isValidData) {
-            debug(decoded, 'Form에 유효한 데이터가 없습니다. 객체나 배열은 지원하지 않습니다.')
+        if (!allBindable) {
+            debug(decoded, ta().notFormBindableDetail)
         }
         return decoded
     })()
@@ -70,7 +71,7 @@ const EntityUpdateForm = <T extends Entity, FORM_DATA extends FieldValues>(
             const errorMessage = typeof error === 'string' ? error : JSON.stringify(error)
             ufr.setError('root', {
                 type: 'manual',
-                message: `폼 데이터 변환 중 오류가 발생했습니다: ${errorMessage}`
+                message: ta().codecError(errorMessage)
             })
         }
     }
@@ -81,7 +82,7 @@ const EntityUpdateForm = <T extends Entity, FORM_DATA extends FieldValues>(
         if (_debug) {
             return `Dirty(${isDirty}), Valid:(${isValid}), isSubmitting:(${isSubmitting})`
         }
-        return hasRole ? '수정' : '권한이 없습니다'
+        return hasRole ? ta().update : ta().noPermission
     })()
 
     return (
@@ -90,7 +91,7 @@ const EntityUpdateForm = <T extends Entity, FORM_DATA extends FieldValues>(
             {ufr.formState.errors.root && (
                 <Form.Item>
                     <Alert
-                        title={'오류'}
+                        title={ta().error}
                         description={ufr.formState.errors.root.message}
                         type="error"
                         showIcon
@@ -101,21 +102,21 @@ const EntityUpdateForm = <T extends Entity, FORM_DATA extends FieldValues>(
             )}
             <InputNumberFormItem
                 fieldKey={'id' as any}
-                labelName={'아이디'}
+                labelName={ta().id}
                 ufr={ufr}
                 inputProps={{disabled: true}}
             />
             {children(ufr, required)}
-            <Form.Item label={'생성자'}>
+            <Form.Item label={ta().createdBy}>
                 <Input disabled value={data.createdBy}/>
             </Form.Item>
-            <Form.Item label={'생성일시'}>
+            <Form.Item label={ta().createdAt}>
                 <Input disabled value={data.createdAtStr}/>
             </Form.Item>
-            <Form.Item label={'수정자'}>
+            <Form.Item label={ta().updatedBy}>
                 <Input disabled value={data.updatedBy}/>
             </Form.Item>
-            <Form.Item label={'수정일시'}>
+            <Form.Item label={ta().updatedAt}>
                 <Input disabled value={data.updatedAtStr}/>
             </Form.Item>
             <ButtonFormItem text={buttonText}

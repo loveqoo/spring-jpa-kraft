@@ -1,4 +1,5 @@
 import FormItemWrapper, {type FormItemWrapperProps} from "./FormItemWrapper.tsx";
+import {ta} from "../../i18n.ts";
 import type {DefaultOptionType} from "antd/es/select";
 import type {SelectProps} from "antd/lib";
 import {Select} from "antd";
@@ -30,7 +31,7 @@ const SelectFormItem = <S extends Record<string, any>>(
             <Select
                 options={options}
                 loading={isLoading}
-                placeholder={_isLoading ? '로딩 중...' : '선택'}
+                placeholder={_isLoading ? ta().selectLoading : ta().selectPlaceholder}
                 {..._selectProps}
             />
         </FormItemWrapper>

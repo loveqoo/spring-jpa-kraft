@@ -1,13 +1,13 @@
 import FormItemWrapper, {type FormItemWrapperProps} from "./FormItemWrapper.tsx";
 import type {CheckboxGroupProps} from "antd/es/checkbox";
-import {Checkbox, type SpaceProps} from "antd";
+import {Checkbox} from "antd";
 import type {CSSProperties} from "react";
 
 export interface CheckboxGroupFormItemProps<S extends Record<string, any>>
     extends Omit<FormItemWrapperProps<S>, 'children'> {
     options: CheckboxGroupProps['options']
     checkboxGroupProps?: CheckboxGroupProps
-    direction?: SpaceProps['direction']
+    vertical?: boolean
 }
 
 const verticalStyle: CSSProperties = {
@@ -20,11 +20,11 @@ const CheckboxGroupFormItem = <S extends Record<string, any>>(
     {
         options,
         checkboxGroupProps,
-        direction = 'horizontal',
+        vertical = false,
         ...rest
     }: CheckboxGroupFormItemProps<S>
 ) => {
-    const style = direction === 'horizontal' ? undefined : verticalStyle
+    const style = vertical ? verticalStyle : undefined
     return (
         <FormItemWrapper {...rest}>
             <Checkbox.Group

@@ -9,4 +9,7 @@ export { default as InputNumberFormItem, type InputNumberFormItemProps } from '.
 export { default as ButtonFormItem } from './component/form/ButtonFormItem'
 export { default as EntityCreateForm } from './component/EntityCreateForm'
 export { default as EntityUpdateForm } from './component/EntityUpdateForm'
+export { default as EntityDeleteButton } from './component/EntityDeleteButton'
+export { default as EntityDetailView } from './component/EntityDetailView'
+export { default as EntityRevisionTable } from './component/EntityRevisionTable'
 
