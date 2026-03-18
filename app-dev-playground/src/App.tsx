@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { ConfigProvider, Layout, Menu, theme } from 'antd'
-import { ShoppingOutlined, PlusOutlined, EditOutlined } from '@ant-design/icons'
+import { ShoppingOutlined, PlusOutlined, EditOutlined, EyeOutlined, HistoryOutlined } from '@ant-design/icons'
 import ProductGuide from './guides/ProductGuide'
 import ProductCreateGuide from './guides/ProductCreateGuide'
 import ProductUpdateGuide from './guides/ProductUpdateGuide'
+import ProductDetailGuide from './guides/ProductDetailGuide'
+import ProductRevisionGuide from './guides/ProductRevisionGuide'
 
 const { Sider, Content } = Layout
 
@@ -23,14 +25,26 @@ const menuItems = [
     icon: <EditOutlined />,
     label: 'Product Update',
   },
+  {
+    key: 'product-detail',
+    icon: <EyeOutlined />,
+    label: 'Product Detail',
+  },
+  {
+    key: 'product-revision',
+    icon: <HistoryOutlined />,
+    label: 'Product Revision',
+  },
 ]
 
-type GuideKey = 'product' | 'product-create' | 'product-update'
+type GuideKey = 'product' | 'product-create' | 'product-update' | 'product-detail' | 'product-revision'
 
 const guides: Record<GuideKey, React.ComponentType> = {
   product: ProductGuide,
   'product-create': ProductCreateGuide,
   'product-update': ProductUpdateGuide,
+  'product-detail': ProductDetailGuide,
+  'product-revision': ProductRevisionGuide,
 }
 
 export default function App() {
